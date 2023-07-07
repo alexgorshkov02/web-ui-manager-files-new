@@ -1,5 +1,15 @@
-const { ApolloServer } = require ("@apollo/server");
-const { startStandaloneServer } = require ("@apollo/server/standalone");
+const { ApolloServer } = require("@apollo/server");
+const { startStandaloneServer } = require("@apollo/server/standalone");
+const { expressMiddleware } = require("@apollo/server/express4");
+const cors = require("cors");
+const express = require("express");
+const json = require("body-parser");
+const path = require("path");
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+const directoryTree = require("./directoryTree");
 
 // A schema is a collection of type definitions (hence "typeDefs")
 // that together define the "shape" of queries that are executed against
@@ -7,38 +17,41 @@ const { startStandaloneServer } = require ("@apollo/server/standalone");
 const typeDefs = `#graphql
   # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
 
-  # This "Book" type defines the queryable fields for every book in our data source.
-  type Book {
-    title: String
-    author: String
+  # This "Directory" type defines the queryable fields for every directory in our data source.
+  type Directory {
+    path: String
+    name: String
+    children: [Directory]
   }
 
   # The "Query" type is special: it lists all of the available queries that
   # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
+  # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
-    books: [Book]
+    directories: Directory
+  }
+
+  # Recursive loading of subfolders
+  fragment allDirectories on Directory {
+    name
+    children {
+      ...allDirectories
+    }
   }
 `;
 
 const db = require("./config/connection");
 
-const books = [
-  {
-    title: "The Awakening",
-    author: "Kate Chopin",
-  },
-  {
-    title: "City of Glass",
-    author: "Paul Auster",
-  },
-];
+
+//Temp const directory. Should be changed
+const pathToRootDirectory = "C:\\testFolder";
+const directories = directoryTree(pathToRootDirectory);
 
 // Resolvers define how to fetch the types defined in your schema.
 // This resolver retrieves books from the "books" array above.
 const resolvers = {
   Query: {
-    books: () => books,
+    directories: () => directories,
   },
 };
 
@@ -54,10 +67,12 @@ const server = new ApolloServer({
 //  2. installs your ApolloServer instance as middleware
 //  3. prepares your app to handle incoming requests
 db.once("open", async () => {
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000 },
+  app.listen(PORT, async () => {
+    await server.start();
+    app.use("/graphql", cors(), json(), expressMiddleware(server));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "../client/public/index.html"));
+    });
+    // console.log(`🚀  Server ready at: ${url}`);
   });
-  console.log(`🚀  Server ready at: ${url}`);
 });
-
-

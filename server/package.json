@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-	"start": "node index.js",
-	"watch": "nodemon server.js",
+    "start": "node index.js",
+    "watch": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@apollo/server": "^4.7.5",
-    "graphql": "^16.7.1"
+    "directory-tree": "^3.5.1",
+    "graphql": "^16.7.1",
+    "path": "^0.12.7"
   }
 }
