@@ -3,12 +3,42 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { ApolloClient, InMemoryCache, ApolloProvider, gql } from '@apollo/client';
+
+// const client = new ApolloClient({
+//   uri: 'https://flyby-router-demo.herokuapp.com/',
+//   cache: new InMemoryCache(),
+//   connectToDevTools: true
+// });
+
+
+const client = new ApolloClient({
+  uri: '/graphql',
+  cache: new InMemoryCache(),
+  connectToDevTools: true
+});
+
+// client
+//   .query({
+//     query: gql`
+//       query GetLocations {
+//         locations {
+//           id
+//           name
+//           description
+//           photo
+//         }
+//       }
+//     `,
+//   })
+//   .then((result) => console.log(result));
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  <ApolloProvider client={client}>
     <App />
-  </React.StrictMode>
+  </ApolloProvider>,
 );
 
 // If you want to start measuring performance in your app, pass a function
