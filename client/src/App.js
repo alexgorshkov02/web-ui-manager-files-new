@@ -1,8 +1,8 @@
-import logo from './logo.svg';
+//import logo from './logo.svg';
 import './App.css';
 import Home from './components/pages/Home';
 // Import everything needed to use the `useQuery` hook
-import { useQuery, gql } from '@apollo/client';
+//import { useQuery, gql } from '@apollo/client';
 
 // const GET_LOCATIONS = gql`
 //   query GetLocations {
@@ -36,8 +36,8 @@ import { useQuery, gql } from '@apollo/client';
 export default function App() {
   return (
     <div>
-      <h2>My first Apollo app 🚀</h2>
-      <br/>
+      {/* <h2>My first Apollo app 🚀</h2>
+      <br/> */}
       <Home/>
       {/* <DisplayLocations /> */}
     </div>
