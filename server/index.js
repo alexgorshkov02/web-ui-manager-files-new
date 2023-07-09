@@ -9,7 +9,7 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const directoryTree = require("./directoryTree");
+const {directoryTree, getFiles} = require("./directoryTree");
 
 // A schema is a collection of type definitions (hence "typeDefs")
 // that together define the "shape" of queries that are executed against
@@ -24,11 +24,18 @@ const typeDefs = `#graphql
     children: [Directory]
   }
 
+  type File {
+    name: String
+    size: String
+    ctime: String
+  }
+
   # The "Query" type is special: it lists all of the available queries that
   # clients can execute, along with the return type for each. In this
   # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
     directories: Directory
+    files: [File]
   }
 
   # Recursive loading of subfolders
@@ -47,11 +54,16 @@ const db = require("./config/connection");
 const pathToRootDirectory = "C:\\testFolder";
 const directories = directoryTree(pathToRootDirectory);
 
+//Temp const directory. Should be changed
+const pathToSelectedDirectory = "C:\\testFolder\\folder5\\files";
+const files = getFiles(pathToSelectedDirectory);
+
 // Resolvers define how to fetch the types defined in your schema.
 // This resolver retrieves books from the "books" array above.
 const resolvers = {
   Query: {
     directories: () => directories,
+    files: () => files,
   },
 };
 
