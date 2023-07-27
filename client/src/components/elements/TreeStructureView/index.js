@@ -1,5 +1,5 @@
 import React from "react";
-import { makeStyles } from "@mui/styles";
+// import { makeStyles } from "@mui/styles";
 import TreeItem from '@mui/lab/TreeItem';
 import TreeView from "@mui/lab//TreeView";
 import { gql, useQuery, useMutation } from '@apollo/client';
@@ -67,7 +67,7 @@ const useStyles = makeStyles({
 export default function TreeStructureView() {
   const [count, setCount] = useState(0);
   const { loading, data, error } = useQuery(GET_DIRECTORIES);
-  const classes = useStyles();
+  // const classes = useStyles();
   const [getFiles] = useMutation(GET_FILES, {
     refetchQueries: [
       {
@@ -120,7 +120,7 @@ export default function TreeStructureView() {
 
   return (
     <TreeView
-      className={classes.root}
+      sx={{ height: 110, flexGrow: 1, maxWidth: 400}}
       defaultCollapseIcon={<ExpandMoreIcon />}
       defaultExpanded={["root"]}
       defaultExpandIcon={<ChevronRightIcon />}
