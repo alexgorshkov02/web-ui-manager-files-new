@@ -105,7 +105,7 @@ export default function PermanentDrawerLeft() {
   }
 
   const renderItem = (node) => {
-    console.log("Type: ", node.type);
+    // console.log("Type: ", node.type);
     return (
       <TreeItem
         onClick={() => handleClick(node.path)}
@@ -114,9 +114,9 @@ export default function PermanentDrawerLeft() {
         label={node.name}
       >
         {Array.isArray(node.children)
-          ? node.children.map((child) =>
-              child.type === "directory" ? renderItem(child) : null
-            )
+          ? node.children
+              .filter((child) => child.type === "directory")
+              .map((child) => renderItem(child))
           : null}
       </TreeItem>
     );
@@ -124,7 +124,7 @@ export default function PermanentDrawerLeft() {
 
   //To exclude the root folder
   const renderTree = (nodes) =>
-    Array.isArray(nodes) ? nodes.map((node) => renderItem(node)) : null;
+    Array.isArray(nodes) ? nodes.filter((node) => node.type === "directory").map((node) => renderItem(node)) : null;
 
   return (
     <Box sx={{ display: "flex" }}>
