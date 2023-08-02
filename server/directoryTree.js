@@ -7,7 +7,7 @@ const dirTree = require("directory-tree");
 // const path1 = "C:\\testFolder\\folder5\\files";
 
 function directoryTree(path) {
-  const tree = dirTree(path, { extensions: /\.txt$/ }, (item, PATH, stats) => {
+  const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, (item, PATH, stats) => {
     // console.log(item);
     // console.log(PATH);
     // console.log(stats);
@@ -19,7 +19,7 @@ function directoryTree(path) {
 }
 
 
-function getFiles(path) {
+function getFilesFromSelectedDirectory(path) {
   let listOfFiles = [];
   dirTree(path, {attributes:["size", "type", "ctime"]}, (item) => {
     // console.log("Item: ", item);
@@ -35,7 +35,7 @@ function getFiles(path) {
 // const tree = directoryTree(path);
 // console.log("Tree", tree);
 
-// const tree1 = getFiles(path1);
+// const tree1 = getFilesFromSelectedDirectory(path1);
 // console.log("Tree", tree1);
 
-module.exports = { directoryTree, getFiles};
+module.exports = { directoryTree, getFilesFromSelectedDirectory};
