@@ -7,7 +7,7 @@ const dirTree = require("directory-tree");
 // const path1 = "C:\\testFolder\\folder5\\files";
 
 function directoryTree(path) {
-  const tree = dirTree(path, { extensions: /\.txt$/ }, (item, PATH, stats) => {
+  const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, (item, PATH, stats) => {
     // console.log(item);
     // console.log(PATH);
     // console.log(stats);

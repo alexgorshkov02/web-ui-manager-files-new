@@ -1,18 +1,25 @@
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
-import CssBaseline from '@mui/material/CssBaseline';
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import List from '@mui/material/List';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
+import * as React from "react";
+import Box from "@mui/material/Box";
+import Drawer from "@mui/material/Drawer";
+import CssBaseline from "@mui/material/CssBaseline";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import List from "@mui/material/List";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
 
-import TreeStructureView from '../../elements/TreeStructureView';
-import FilesView from '../../elements/FilesView';
+// import TreeStructureView from '../../elements/TreeStructureView';
+// import FilesView from '../../elements/FilesView';
 // import { styled, createTheme, ThemeProvider } from '@mui/system';
-import { gql, useQuery, useMutation } from '@apollo/client';
-import { useState } from 'react';
+import { gql, useQuery, useMutation } from "@apollo/client";
+import { useState, useEffect } from "react";
+
+import { DataGrid } from "@mui/x-data-grid";
+
+import TreeItem from "@mui/lab/TreeItem";
+import TreeView from "@mui/lab/TreeView";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 const drawerWidth = 240;
 
@@ -23,11 +30,10 @@ const drawerWidth = 240;
 //   borderRadius: 4,
 // });
 
-
-
+// Define mutation
 const GET_FILES = gql`
-  query GetFiles ($directory: String) {
-    files (directory: $directory) {
+  mutation GetFiles($directory: String) {
+    getFiles(directory: $directory) {
       name
       size
       ctime
@@ -35,55 +41,93 @@ const GET_FILES = gql`
   }
 `;
 
-
-// Define mutation
-const GET_FILES1 = gql`
-mutation GetFiles($directory: String) {
-  getFiles (directory: $directory) {
-    name
-    size
-    ctime
+const GET_DIRECTORIES = gql`
+  query GetDirectories {
+    directories {
+      name
+      path
+      type
+      children {
+        name
+        path
+        type
+        children {
+          name
+          path
+          type
+          children {
+            name
+            path
+            type
+            children {
+              name
+              path
+              type
+            }
+          }
+        }
+      }
+    }
   }
-}
 `;
 
 export default function PermanentDrawerLeft() {
+  const [actualData, setEvent] = useState();
+  const [directories, setDirectories] = useState();
 
-  const [count, setCount] = useState(0);
-  const { loading, data, error, refetch } = useQuery(GET_FILES, {
-    variables: { directory: 'InitialLoading' }
-  });
-  console.log("TEST DATA: ", refetch);
-
-
-
-
-  const [getFiles] = useMutation(GET_FILES1, {
-    refetchQueries: [
-      {
-        query:GET_FILES,
-        variables: {directory: "C:\\testFolder\\folder5\\files"},
-        awaitRefetchQueries: true,
-        fetchPolicy: "network-only"
-      }
-      
-    ]
+  const { loading, data, error } = useQuery(GET_DIRECTORIES, {
+    onCompleted: (completedData) => {
+      // onCompleted is a standard useQuery option
+      // console.log("completedData: ", completedData);
+      setDirectories(completedData.directories.children);
+    },
   });
 
-  async function handleClick() {
-    setCount(count + 1);
+  useEffect(() => {
+    setDirectories(directories);
+  }, [directories]);
 
+  const [getFiles] = useMutation(GET_FILES);
 
-    const response = await getFiles({variables: { directory: "C:\\testFolder\\folder5\\files" }});
-    const files = response.data.getFiles;
-    console.log(files);
+  if (loading) return "Loading...";
+  if (error) {
+    // Handle any errors that occurred during the query
+    console.error(error);
+    return <div>{error.message}</div>;
   }
 
+  async function handleClick(path) {
+    // console.log("path: ", path);
+    const response = await getFiles({ variables: { directory: path } });
+    const actualData = response.data.getFiles;
+    // console.log(actualData);
+    setEvent(actualData);
+  }
 
+  const renderItem = (node) => {
+    console.log("Type: ", node.type);
+    return (
+      <TreeItem
+        onClick={() => handleClick(node.path)}
+        key={node.name}
+        nodeId={node.path}
+        label={node.name}
+      >
+        {Array.isArray(node.children)
+          ? node.children.map((child) =>
+              child.type === "directory" ? renderItem(child) : null
+            )
+          : null}
+      </TreeItem>
+    );
+  };
 
+  //To exclude the root folder
+  const renderTree = (nodes) =>
+    Array.isArray(nodes) ? nodes.map((node) => renderItem(node)) : null;
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: "flex" }}>
       <CssBaseline />
       <AppBar
         position="fixed"
@@ -99,9 +143,9 @@ export default function PermanentDrawerLeft() {
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
+          "& .MuiDrawer-paper": {
             width: drawerWidth,
-            boxSizing: 'border-box',
+            boxSizing: "border-box",
           },
         }}
         variant="permanent"
@@ -110,15 +154,37 @@ export default function PermanentDrawerLeft() {
         <Toolbar />
         <Divider />
         <List>
-          <TreeStructureView />
+          <TreeView
+            sx={{ height: 110, flexGrow: 1, maxWidth: 400 }}
+            defaultCollapseIcon={<ExpandMoreIcon />}
+            defaultExpanded={["root"]}
+            defaultExpandIcon={<ChevronRightIcon />}
+          >
+            {renderTree(directories)}
+          </TreeView>
         </List>
       </Drawer>
-      <Box
-        component="main"
-        sx={{ flexGrow: 1, bgcolor: 'background.default' }}
-      >
+      <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
         <Toolbar />
-        <FilesView />
+        <div style={{ height: 400, width: "100%" }}>
+          {(() => {
+            if (actualData) {
+              return (
+                <DataGrid
+                  getRowId={(row) => row.name}
+                  columns={[
+                    { field: "name", headerName: "Name" },
+                    { field: "size", headerName: "Size" },
+                    { field: "ctime", headerName: "Date" },
+                  ]}
+                  rows={actualData}
+                />
+              );
+            } else {
+              return <div>Select a folder</div>;
+            }
+          })()}
+        </div>
       </Box>
     </Box>
   );

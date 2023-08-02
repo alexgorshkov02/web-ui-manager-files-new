@@ -21,6 +21,7 @@ const typeDefs = `#graphql
   type Directory {
     path: String
     name: String
+    type: String
     children: [Directory]
   }
 

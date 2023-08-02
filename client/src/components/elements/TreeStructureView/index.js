@@ -1,7 +1,7 @@
 import React from "react";
 // import { makeStyles } from "@mui/styles";
 import TreeItem from '@mui/lab/TreeItem';
-import TreeView from "@mui/lab//TreeView";
+import TreeView from "@mui/lab/TreeView";
 import { gql, useQuery, useMutation } from '@apollo/client';
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -56,13 +56,13 @@ const GET_FILES1 = gql`
   }
 `;
 
-const useStyles = makeStyles({
-  root: {
-    height: 110,
-    flexGrow: 1,
-    maxWidth: 400,
-  },
-});
+// const useStyles = makeStyles({
+//   root: {
+//     height: 110,
+//     flexGrow: 1,
+//     maxWidth: 400,
+//   },
+// });
 
 export default function TreeStructureView() {
   const [count, setCount] = useState(0);
