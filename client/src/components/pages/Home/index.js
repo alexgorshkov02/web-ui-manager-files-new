@@ -14,6 +14,8 @@ import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 
 const drawerWidth = 240;
 
@@ -24,6 +26,7 @@ const GET_FILES = gql`
       name
       size
       ctime
+      path
     }
   }
 `;
@@ -63,6 +66,8 @@ export default function PermanentDrawerLeft() {
   const [actualData, setEvent] = useState();
   const [directories, setDirectories] = useState();
 
+  const [contextMenu, setContextMenu] = useState(null);
+
   const { loading, data, error } = useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
       // console.log("completedData: ", completedData);
@@ -82,6 +87,25 @@ export default function PermanentDrawerLeft() {
     console.error(error);
     return <div>{error.message}</div>;
   }
+
+  const handleContextMenu = (event) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+          }
+        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+          // Other native context menus might behave different.
+          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+          null
+    );
+  };
+
+  const handleClose = () => {
+    setContextMenu(null);
+  };
 
   async function handleClick(path) {
     // console.log("path: ", path);
@@ -111,7 +135,11 @@ export default function PermanentDrawerLeft() {
 
   //To exclude the root folder
   const renderTree = (nodes) =>
-    Array.isArray(nodes) ? nodes.filter((node) => node.type === "directory").map((node) => renderItem(node)) : null;
+    Array.isArray(nodes)
+      ? nodes
+          .filter((node) => node.type === "directory")
+          .map((node) => renderItem(node))
+      : null;
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -157,15 +185,32 @@ export default function PermanentDrawerLeft() {
           {(() => {
             if (actualData) {
               return (
-                <DataGrid
-                  getRowId={(row) => row.name}
-                  columns={[
-                    { field: "name", headerName: "Name" },
-                    { field: "size", headerName: "Size" },
-                    { field: "ctime", headerName: "Date" },
-                  ]}
-                  rows={actualData}
-                />
+                <div
+                  onContextMenu={handleContextMenu}
+                  style={{ cursor: "context-menu" }}
+                >
+                  <DataGrid
+                    getRowId={(row) => row.path}
+                    columns={[
+                      { field: "name", headerName: "Name" },
+                      { field: "size", headerName: "Size" },
+                      { field: "ctime", headerName: "Date" },
+                    ]}
+                    rows={actualData}
+                  />
+                  <Menu
+                    open={contextMenu !== null}
+                    onClose={handleClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                      contextMenu !== null
+                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                        : undefined
+                    }
+                  >
+                    <MenuItem onClick={handleClose}>Download</MenuItem>
+                  </Menu>
+                </div>
               );
             } else {
               return <div>Select a folder</div>;

@@ -29,6 +29,7 @@ const typeDefs = `#graphql
     name: String
     size: String
     ctime: String
+    path: String
   }
 
   # The "Query" type is special: it lists all of the available queries that
