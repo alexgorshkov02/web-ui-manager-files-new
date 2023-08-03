@@ -7,28 +7,15 @@ import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
-
-// import TreeStructureView from '../../elements/TreeStructureView';
-// import FilesView from '../../elements/FilesView';
-// import { styled, createTheme, ThemeProvider } from '@mui/system';
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useState, useEffect } from "react";
-
 import { DataGrid } from "@mui/x-data-grid";
-
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 const drawerWidth = 240;
-
-// const MyComponent = styled('div')({
-//   color: 'darkslategray',
-//   backgroundColor: 'aliceblue',
-//   padding: 8,
-//   borderRadius: 4,
-// });
 
 // Define mutation
 const GET_FILES = gql`
@@ -41,6 +28,7 @@ const GET_FILES = gql`
   }
 `;
 
+// Define query
 const GET_DIRECTORIES = gql`
   query GetDirectories {
     directories {
@@ -77,7 +65,6 @@ export default function PermanentDrawerLeft() {
 
   const { loading, data, error } = useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
-      // onCompleted is a standard useQuery option
       // console.log("completedData: ", completedData);
       setDirectories(completedData.directories.children);
     },
