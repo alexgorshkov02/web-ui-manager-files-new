@@ -100,6 +100,9 @@ const resolvers = {
   }
 };
 
+// Serve static assets. Check later.
+// app.use(express.static(path.join(__dirname, "../client/public")));
+
 // The ApolloServer constructor requires two parameters: your schema
 // definition and your set of resolvers.
 const server = new ApolloServer({

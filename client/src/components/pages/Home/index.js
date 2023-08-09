@@ -7,7 +7,7 @@ import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useApolloClient, gql, useQuery, useMutation } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import TreeItem from "@mui/lab/TreeItem";
@@ -86,6 +86,8 @@ const GET_GRAPHQL_TODOS = gql`
 
 
 export default function PermanentDrawerLeft() {
+  // const client = useApolloClient();
+
   const [actualData, setEvent] = useState();
   const [directories, setDirectories] = useState();
   // const [dataRest1, downloadFile] = useState(null);

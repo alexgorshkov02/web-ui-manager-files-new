@@ -3,36 +3,24 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { ApolloClient, InMemoryCache, ApolloProvider, gql } from '@apollo/client';
-
-// const client = new ApolloClient({
-//   uri: 'https://flyby-router-demo.herokuapp.com/',
-//   cache: new InMemoryCache(),
-//   connectToDevTools: true
-// });
+import { ApolloClient, InMemoryCache, ApolloProvider, from, createHttpLink } from '@apollo/client';
+import { RestLink } from 'apollo-link-rest';
 
 
-const client = new ApolloClient({
-  uri: '/graphql',
-  cache: new InMemoryCache(),
-  connectToDevTools: true
+//WA: https://github.com/apollographql/apollo-link-rest/issues/172
+const httpLink = createHttpLink({
+  uri: 'http://localhost:3001/graphql',
 });
 
-// client
-//   .query({
-//     query: gql`
-//       query GetLocations {
-//         locations {
-//           id
-//           name
-//           description
-//           photo
-//         }
-//       }
-//     `,
-//   })
-//   .then((result) => console.log(result));
+const restLink = new RestLink({
+  uri: 'http://localhost:3001',
+});
 
+const client = new ApolloClient({
+  cache: new InMemoryCache(),
+  link: from([restLink, httpLink]),
+  connectToDevTools: true,
+});
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
