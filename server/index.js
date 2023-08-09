@@ -70,7 +70,7 @@ const files = getFilesFromSelectedDirectory(pathToSelectedDirectory);
 const resolvers = {
   Query: {
     directories: () => directories,
-    files: (parent, { directory }, context) => {{
+    files: (parent, { directory }, context) => {
       console.log("files_Query: directory: ", directory);
 
       if (typeof directory !== 'string') {
@@ -78,7 +78,7 @@ const resolvers = {
       }
       const files = getFilesFromSelectedDirectory(directory);
     return files;
-    }}
+    }
   },
   Mutation: {
     getFiles: (parent, { directory }, context) => {
@@ -88,7 +88,15 @@ const resolvers = {
       }
       const files = getFilesFromSelectedDirectory(directory);
     return files;
-    }
+    },
+    // download: (parent, { directory }, context) => {
+    //   console.log("download_Query: directory: ", directory);
+
+    //   if (typeof directory !== 'string') {
+    //     throw new Error('The "directory" argument must be a string.');
+    //   }
+    //   downloadFile(directory);
+    // } 
   }
 };
 

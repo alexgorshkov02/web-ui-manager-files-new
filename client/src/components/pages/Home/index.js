@@ -16,6 +16,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+// import { restClient } from "../../../utils/restClient";
 
 const drawerWidth = 240;
 
@@ -62,11 +63,37 @@ const GET_DIRECTORIES = gql`
   }
 `;
 
+
+// REST queries
+const GET_GRAPHQL_TODOS = gql`
+  query getTodos {
+    getTodos {
+      id
+      title
+      completed
+    }
+  }
+`;
+
+// const REST_DOWNLOAD_FILE = gql`
+// mutation DownloadFile {
+//   downloadFile(path: $path)
+//     @rest(path: "/download", method: "POST")
+// }
+// `;
+
+
+
+
 export default function PermanentDrawerLeft() {
   const [actualData, setEvent] = useState();
   const [directories, setDirectories] = useState();
+  // const [dataRest1, downloadFile] = useState(null);
+
 
   const [contextMenu, setContextMenu] = useState(null);
+
+  const [path, setPath] = useState(null);
 
   const { loading, data, error } = useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
@@ -80,6 +107,11 @@ export default function PermanentDrawerLeft() {
   }, [directories]);
 
   const [getFiles] = useMutation(GET_FILES);
+  // const [downloadFile] = useMutation(REST_DOWNLOAD_FILE, {
+  //   client: restClient,
+  // });
+
+  // const { dataRest } = useQuery(GET_REST_TODOS, { client: restClient });
 
   if (loading) return "Loading...";
   if (error) {
@@ -90,6 +122,20 @@ export default function PermanentDrawerLeft() {
 
   const handleContextMenu = (event) => {
     event.preventDefault();
+    console.log("event1: ", event.target.parentElement.dataset.id);
+    console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
+    let path;
+
+    if (event.target.parentElement.dataset.id) {
+      path = event.target.parentElement.dataset.id
+    } else if (event.target.parentElement.parentElement.dataset.id) {
+      path = event.target.parentElement.parentElement.dataset.id
+    } else {
+      console.log ("No path!")
+    }
+
+    setPath (path);
+
     setContextMenu(
       contextMenu === null
         ? {
@@ -105,6 +151,29 @@ export default function PermanentDrawerLeft() {
 
   const handleClose = () => {
     setContextMenu(null);
+  };
+
+  // const handleDownload = (e) => {
+  //   // e.preventDefault();
+  //   window.alert('success!');
+  // //   const selectedRows = e.gridApi.getSelectedRows();
+  // // const selectedId = selectedRows[0].id;
+  // console.log("selectedId: ", e);
+  //   // downloadFile();
+  // }
+
+
+
+  const handleDownload = (e) => {
+    // console.log('e.type: ', e.type);
+    if (e.type === 'click') {
+      console.log('Left click');
+      console.log('path: ', path);
+      handleClose();
+
+    } else if (e.type === 'contextmenu') {
+      console.log('Right click');
+    }
   };
 
   async function handleClick(path) {
@@ -208,7 +277,7 @@ export default function PermanentDrawerLeft() {
                         : undefined
                     }
                   >
-                    <MenuItem onClick={handleClose}>Download</MenuItem>
+                    <MenuItem onClick={handleDownload}>Download</MenuItem>
                   </Menu>
                 </div>
               );
