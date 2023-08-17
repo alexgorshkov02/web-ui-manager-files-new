@@ -3,13 +3,17 @@ const { startStandaloneServer } = require("@apollo/server/standalone");
 const { expressMiddleware } = require("@apollo/server/express4");
 const cors = require("cors");
 const express = require("express");
-const json = require("body-parser");
+const bodyParser = require("body-parser");
+// const json = require("body-parser");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const {directoryTree, getFilesFromSelectedDirectory} = require("./directoryTree");
+const {
+  directoryTree,
+  getFilesFromSelectedDirectory,
+} = require("./directoryTree");
 
 // A schema is a collection of type definitions (hence "typeDefs")
 // that together define the "shape" of queries that are executed against
@@ -54,8 +58,6 @@ const typeDefs = `#graphql
 `;
 
 const db = require("./config/connection");
-const { log } = require("console");
-
 
 //Temp const directory. Should be changed
 const pathToRootDirectory = "C:\\testFolder";
@@ -73,31 +75,23 @@ const resolvers = {
     files: (parent, { directory }, context) => {
       console.log("files_Query: directory: ", directory);
 
-      if (typeof directory !== 'string') {
+      if (typeof directory !== "string") {
         throw new Error('The "directory" argument must be a string.');
       }
       const files = getFilesFromSelectedDirectory(directory);
-    return files;
-    }
+      return files;
+    },
   },
   Mutation: {
     getFiles: (parent, { directory }, context) => {
-      console.log("getFiles_Mutation: directory: ",directory);
-      if (typeof directory !== 'string') {
+      console.log("getFiles_Mutation: directory: ", directory);
+      if (typeof directory !== "string") {
         throw new Error('The "directory" argument must be a string.');
       }
       const files = getFilesFromSelectedDirectory(directory);
-    return files;
+      return files;
     },
-    // download: (parent, { directory }, context) => {
-    //   console.log("download_Query: directory: ", directory);
-
-    //   if (typeof directory !== 'string') {
-    //     throw new Error('The "directory" argument must be a string.');
-    //   }
-    //   downloadFile(directory);
-    // } 
-  }
+  },
 };
 
 // Serve static assets. Check later.
@@ -117,7 +111,35 @@ const server = new ApolloServer({
 db.once("open", async () => {
   app.listen(PORT, async () => {
     await server.start();
-    app.use("/graphql", cors(), json(), expressMiddleware(server));
+    app.use(bodyParser.json());
+    app.use("/graphql", cors(), expressMiddleware(server));
+    app.use((req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      next();
+    });
+
+    app.post("/download", async (req, res) => {
+      try {
+        // console.log("path_SERVER: ", req.body);
+        const { pathToFile } = req.body; // Extract the 'path' property from the request body
+        console.log("path_SERVER: ", pathToFile);
+
+        res.sendFile(pathToFile, (error) => {
+          if (error) {
+            console.error("Error sending file:", error.message);
+            res.status(500).send("Internal Server Error");
+          } else {
+            console.log("File sent successfully");
+          }
+        });
+      } catch (error) {
+        console.error("Error downloading file from the REST API:", error);
+        res.status(500).json({ error: "Failed to download file" }); // Handle error
+      }
+    });
+
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "../client/public/index.html"));
     });

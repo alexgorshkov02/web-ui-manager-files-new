@@ -1,7 +1,7 @@
 const PATH = require("path");
 const dirTree = require("directory-tree");
 const fs = require('fs');
-
+const http = require('http'); 
 
 //For testing (temp)
 // const path = "C:\\testFolder\\";
@@ -39,21 +39,4 @@ function getFilesFromSelectedDirectory(path) {
 // const tree1 = getFilesFromSelectedDirectory(path1);
 // console.log("Tree", tree1);
 
-function downloadFile(path) {
-const file = fs.createWriteStream("file.txt");
-const request = http.get(path, function(response) {
-   response.pipe(file);
-
-   // after download completed close filestream
-   file.on("finish", () => {
-       file.close();
-       console.log("Download Completed");
-   }).on('error', function(err) { // Handle errors
-    console.error(err.message);
-  });
-});
-
-}
-
-
-module.exports = { directoryTree, getFilesFromSelectedDirectory, downloadFile};
+module.exports = { directoryTree, getFilesFromSelectedDirectory};

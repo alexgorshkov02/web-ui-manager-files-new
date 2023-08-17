@@ -7,7 +7,7 @@ import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
-import { useApolloClient, gql, useQuery, useMutation } from "@apollo/client";
+import { gql, useQuery, useMutation } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import TreeItem from "@mui/lab/TreeItem";
@@ -64,37 +64,10 @@ const GET_DIRECTORIES = gql`
 `;
 
 
-// REST queries
-const GET_GRAPHQL_TODOS = gql`
-  query getTodos {
-    getTodos {
-      id
-      title
-      completed
-    }
-  }
-`;
-
-// const REST_DOWNLOAD_FILE = gql`
-// mutation DownloadFile {
-//   downloadFile(path: $path)
-//     @rest(path: "/download", method: "POST")
-// }
-// `;
-
-
-
-
 export default function PermanentDrawerLeft() {
-  // const client = useApolloClient();
-
   const [actualData, setEvent] = useState();
   const [directories, setDirectories] = useState();
-  // const [dataRest1, downloadFile] = useState(null);
-
-
   const [contextMenu, setContextMenu] = useState(null);
-
   const [path, setPath] = useState(null);
 
   const { loading, data, error } = useQuery(GET_DIRECTORIES, {
@@ -109,11 +82,6 @@ export default function PermanentDrawerLeft() {
   }, [directories]);
 
   const [getFiles] = useMutation(GET_FILES);
-  // const [downloadFile] = useMutation(REST_DOWNLOAD_FILE, {
-  //   client: restClient,
-  // });
-
-  // const { dataRest } = useQuery(GET_REST_TODOS, { client: restClient });
 
   if (loading) return "Loading...";
   if (error) {
@@ -124,59 +92,91 @@ export default function PermanentDrawerLeft() {
 
   const handleContextMenu = (event) => {
     event.preventDefault();
-    console.log("event1: ", event.target.parentElement.dataset.id);
-    console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
-    let path;
+    // console.log("event1: ", event.target.parentElement.dataset.id);
+    // console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
 
-    if (event.target.parentElement.dataset.id) {
-      path = event.target.parentElement.dataset.id
-    } else if (event.target.parentElement.parentElement.dataset.id) {
-      path = event.target.parentElement.parentElement.dataset.id
-    } else {
-      console.log ("No path!")
+    //To close the menu by clicking right button if it is alreayd open
+    if (contextMenu) {
+      handleClose();
     }
 
-    setPath (path);
+    const elementPath = event.target.parentElement.dataset.id;
+    const parentPath = event.target.parentElement.parentElement.dataset.id;
 
-    setContextMenu(
-      contextMenu === null
-        ? {
-            mouseX: event.clientX + 2,
-            mouseY: event.clientY - 6,
-          }
-        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
-          // Other native context menus might behave different.
-          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
-          null
-    );
+    if (elementPath || parentPath) {
+      if (elementPath) {
+        setPath(elementPath);
+      } else if (parentPath) {
+        setPath(parentPath);
+      } else {
+        console.log("Error: No path!");
+      }
+
+      setContextMenu(
+        contextMenu === null
+          ? {
+              mouseX: event.clientX + 2,
+              mouseY: event.clientY - 6,
+            }
+          : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+            // Other native context menus might behave different.
+            // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+            null
+      );
+    } else {
+      console.log("No path!");
+    }
   };
 
   const handleClose = () => {
     setContextMenu(null);
   };
 
-  // const handleDownload = (e) => {
-  //   // e.preventDefault();
-  //   window.alert('success!');
-  // //   const selectedRows = e.gridApi.getSelectedRows();
-  // // const selectedId = selectedRows[0].id;
-  // console.log("selectedId: ", e);
-  //   // downloadFile();
-  // }
+  async function handleDownload(e) {
+    // console.log("path to download: ", path)
+    if (path) {
+      try {
+        const response = await fetch("http://localhost:3001/download", {
+          method: "POST", // Use the POST method
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ pathToFile: path }), // Pass the file path in the request body
+        });
+        if (!response.ok) {
+          throw new Error("Failed to download file");
+        }
 
+        // console.log('response:', response.headers.get('File-Name'));
 
+        // Get a file name from a selected path
+        const delimiter = "\\"; // Delimiter used to split the string
+        const lastDelimiterIndex = path.lastIndexOf(delimiter);
+        let fileName;
+        if (lastDelimiterIndex !== -1) {
+          fileName = path.substring(lastDelimiterIndex + 1);
+          console.log("fileName", fileName);
+        } else {
+          console.log("Delimiter not found in the string");
+        }
 
-  const handleDownload = (e) => {
-    // console.log('e.type: ', e.type);
-    if (e.type === 'click') {
-      console.log('Left click');
-      console.log('path: ', path);
-      handleClose();
+        // Trigger the file download using the Blob and anchor approach
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
 
-    } else if (e.type === 'contextmenu') {
-      console.log('Right click');
-    }
-  };
+        console.log("File downloaded successfully");
+        handleClose();
+      } catch (error) {
+        console.error("Error downloading file:", error.message);
+      }
+    } else handleClose();
+  }
 
   async function handleClick(path) {
     // console.log("path: ", path);
