@@ -1,6 +1,7 @@
 const PATH = require("path");
 const dirTree = require("directory-tree");
-
+const fs = require('fs');
+const http = require('http'); 
 
 //For testing (temp)
 // const path = "C:\\testFolder\\";
