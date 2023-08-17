@@ -16,9 +16,11 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-// import { restClient } from "../../../utils/restClient";
+import MenuListElement from "../../../elements/MenuListElement";
+
 
 const drawerWidth = 240;
+
 
 // Define mutation
 const GET_FILES = gql`
@@ -217,12 +219,13 @@ export default function PermanentDrawerLeft() {
       <CssBaseline />
       <AppBar
         position="fixed"
-        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
+        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`, flexDirection: "row", justifyContent: "flex-end"  }}
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div">
             Permanent drawer
           </Typography>
+          <MenuListElement/>
         </Toolbar>
       </AppBar>
       <Drawer
