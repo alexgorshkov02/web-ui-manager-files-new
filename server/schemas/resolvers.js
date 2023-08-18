@@ -1,4 +1,7 @@
+const JWT = require("jsonwebtoken");
 const { User } = require("../models");
+
+const JWT_SECRET = "test";
 
 const {
   directoryTree,
@@ -25,6 +28,14 @@ const resolvers = {
       const files = getFilesFromSelectedDirectory(directory);
       return files;
     },
+    users: async () => {
+      try {
+        const users = await User.find();
+        return users;
+      } catch (error) {
+        throw new Error("Error fetching users");
+      }
+    },
   },
   Mutation: {
     getFiles: (parent, { directory }, context) => {
@@ -35,6 +46,32 @@ const resolvers = {
       const files = getFilesFromSelectedDirectory(directory);
       return files;
     },
+    login: async (parent, { username, password }, context) => {
+      try {
+        const user = await User.findOne({ username });
+        if (!user) {
+          throw new AuthenticationError("Incorrect credentials");
+        }
+        const correctPassword = await user.isCorrectPassword(password);
+        if (!correctPassword) {
+          throw new AuthenticationError("Incorrect credentials");
+        }
+        const token = JWT.sign({ username, id: user.id }, JWT_SECRET, {
+          expiresIn: "1d", // Expiration time
+        });
+        return { token };
+      } catch (error) {
+        throw new Error("An error occurred while logging in");
+      }
+    },
+    addUser: async (parent, { username, password }, context) => {
+      const user = await User.create({ username, password })
+      const token = JWT.sign({ username, id: user.id }, JWT_SECRET, {
+        expiresIn: "1d", // Expiration time
+      });
+
+      return {token}
+  }
   },
 };
 

@@ -16,12 +16,19 @@ const typeDefs = `#graphql
     path: String
   }
 
+  type User {
+    _id: ID!
+    username: String!
+    password: String!
+  }
+
   # The "Query" type is special: it lists all of the available queries that
   # clients can execute, along with the return type for each. In this
   # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
     directories: Directory
     files(directory: String): [File]
+    users: [User]
   }
 
   # Recursive loading of subfolders
@@ -32,8 +39,14 @@ const typeDefs = `#graphql
     }
   }
 
+  type Auth {
+    token: String
+  }
+
   type Mutation {
     getFiles(directory: String): [File]
+    login (username: String!, password: String!): Auth
+    addUser(username: String!, password: String!): Auth
   }
 `;
 
