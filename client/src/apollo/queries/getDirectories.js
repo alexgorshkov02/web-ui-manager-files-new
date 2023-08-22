@@ -1,6 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
 
-// Define query
 export const GET_DIRECTORIES = gql`
   query GetDirectories {
     directories {

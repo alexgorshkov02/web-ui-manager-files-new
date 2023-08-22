@@ -1,26 +1,10 @@
-import { gql, useMutation } from "@apollo/client";
 import React, { useState } from "react";
-
-const LOGIN = gql`
-mutation Login($username: String!, $password: String!) {
-  login(username: $username, password: $password) {
-    token
-  }
-}
-`;
-
-const SIGNUP = gql`
-mutation AddUser($username: String!, $password: String!) {
-  addUser(username: $username, password: $password) {
-    token
-  }
-}
-`;
+import {useLoginMutation} from "../../../apollo/mutations"
 
 const LoginForm = ({ changeLoginState }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [login, { loading, error }] = useMutation(LOGIN);
+  const [login, { loading, error }] = useLoginMutation();
 
   if (loading) return "Loading...";
   if (error) {
@@ -44,6 +28,7 @@ const LoginForm = ({ changeLoginState }) => {
       console.error("Error logging in:", error);
     }
   };
+  
   return (
     <div className="login">
       <form onSubmit={onSubmit}>

@@ -7,8 +7,8 @@ import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
-import { gql, useQuery, useMutation } from "@apollo/client";
-import { useState, useEffect } from "react";
+import { useQuery } from "@apollo/client";
+import { useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
@@ -17,25 +17,16 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MenuListElement from "../../../elements/MenuListElement";
-import { useGetFilesQuery, GET_FILES } from "../../../apollo/queries/getFiles";
-import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
+import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 
 const drawerWidth = 240;
 
 export default function PermanentDrawerLeft() {
   const [directories, setDirectories] = useState();
-  const [contextMenu, setContextMenu] = useState(null);
   const [path, setPath] = useState(null);
   const [selectedDirectory, setSelectedDirectory] = useState();
   const [selectedFiles, setSelectedFiles] = useState();
-
-  const { dataFiles, loadingFiles, errorFiles } = useQuery(GET_FILES, {
-    variables: { directory: selectedDirectory },
-    onCompleted: (completedData) => {
-      // console.log("completedData: ", completedData);
-      setSelectedFiles(completedData.getFiles);
-    },
-  });
+  const [contextMenu, setContextMenu] = useState(null);
 
   const { dataDirectories, loadingDirectories, errorDirectories } = useQuery(
     GET_DIRECTORIES,
@@ -47,18 +38,23 @@ export default function PermanentDrawerLeft() {
     }
   );
 
-  if (loadingDirectories) return "Loading...";
-  if (errorDirectories) {
-    // Handle any errors that occurred during the query
-    console.error(errorDirectories);
-    return <div>{errorDirectories.message}</div>;
-  }
+  const { dataFiles, loadingFiles, errorFiles } = useQuery(GET_FILES, {
+    variables: { directory: selectedDirectory },
+    onCompleted: (completedData) => {
+      // console.log("completedData: ", completedData);
+      setSelectedFiles(completedData.getFiles);
+    },
+  });
 
-  if (loadingFiles) return "Loading...";
-  if (errorFiles) {
+  if (loadingDirectories || loadingFiles) return "Loading...";
+  if (errorDirectories || errorFiles) {
     // Handle any errors that occurred during the query
-    console.error(errorFiles);
-    return <div>{errorFiles.message}</div>;
+    console.error(errorDirectories, errorFiles);
+    return (
+      <div>
+        {errorDirectories.message}, {errorFiles.message}
+      </div>
+    );
   }
 
   const handleContextMenu = (event) => {
@@ -226,40 +222,36 @@ export default function PermanentDrawerLeft() {
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
         <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
-          {(() => {
-            if (selectedFiles) {
-              return (
-                <div
-                  onContextMenu={handleContextMenu}
-                  style={{ cursor: "context-menu" }}
-                >
-                  <DataGrid
-                    getRowId={(row) => row.path}
-                    columns={[
-                      { field: "name", headerName: "Name" },
-                      { field: "size", headerName: "Size" },
-                      { field: "ctime", headerName: "Date" },
-                    ]}
-                    rows={selectedFiles}
-                  />
-                  <Menu
-                    open={contextMenu !== null}
-                    onClose={handleClose}
-                    anchorReference="anchorPosition"
-                    anchorPosition={
-                      contextMenu !== null
-                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                        : undefined
-                    }
-                  >
-                    <MenuItem onClick={handleDownload}>Download</MenuItem>
-                  </Menu>
-                </div>
-              );
-            } else {
-              return <div>Select a folder</div>;
-            }
-          })()}
+          {selectedFiles ? (
+            <div
+              onContextMenu={handleContextMenu}
+              style={{ cursor: "context-menu" }}
+            >
+              <DataGrid
+                getRowId={(row) => row.path}
+                columns={[
+                  { field: "name", headerName: "Name" },
+                  { field: "size", headerName: "Size" },
+                  { field: "ctime", headerName: "Date" },
+                ]}
+                rows={selectedFiles}
+              />
+              <Menu
+                open={contextMenu !== null}
+                onClose={handleClose}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                  contextMenu !== null
+                    ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                    : undefined
+                }
+              >
+                <MenuItem onClick={handleDownload}>Download</MenuItem>
+              </Menu>
+            </div>
+          ) : (
+            <div>Select a folder</div>
+          )}
         </div>
       </Box>
     </Box>

@@ -3,6 +3,7 @@ import "./App.css";
 import Home from "./components/pages/Home";
 import LoginForm from "./components/pages/Login";
 import React, { useState } from "react";
+import LoginSignupForm from "./components/pages/LoginSignup"
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
@@ -15,7 +16,7 @@ export default function App() {
           <Home />
         </div>
       )}
-      {!loggedIn && <LoginForm changeLoginState={setLoggedIn} />}
+      {!loggedIn && <LoginSignupForm changeLoginState={setLoggedIn} />}
     </div>
   );
 }

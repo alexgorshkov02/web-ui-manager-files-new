@@ -65,7 +65,7 @@ const resolvers = {
         throw new Error("An error occurred while logging in");
       }
     },
-    addUser: async (parent, { username, password }, context) => {
+    signup: async (parent, { username, password }, context) => {
       const existingUser = await User.findOne({ username });
       if (existingUser) {
         throw new Error("User already exists");
