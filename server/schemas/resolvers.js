@@ -36,16 +36,17 @@ const resolvers = {
         throw new Error("Error fetching users");
       }
     },
-  },
-  Mutation: {
     getFiles: (parent, { directory }, context) => {
-      console.log("getFiles_Mutation: directory: ", directory);
+      // console.log("getFiles_Query: directory: ", directory);
       if (typeof directory !== "string") {
         throw new Error('The "directory" argument must be a string.');
       }
       const files = getFilesFromSelectedDirectory(directory);
+      // console.log("getFiles_Query: files: ", files);
       return files;
     },
+  },
+  Mutation: {
     login: async (parent, { username, password }, context) => {
       try {
         const user = await User.findOne({ username });
@@ -65,13 +66,17 @@ const resolvers = {
       }
     },
     addUser: async (parent, { username, password }, context) => {
-      const user = await User.create({ username, password })
-      const token = JWT.sign({ username, id: user.id }, JWT_SECRET, {
-        expiresIn: "1d", // Expiration time
-      });
-
-      return {token}
-  }
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        throw new Error("User already exists");
+      } else {
+        const newUser = await User.create({ username, password });
+        const token = JWT.sign({ username, id: newUser.id }, JWT_SECRET, {
+          expiresIn: "1d", // Expiration time
+        });
+        return { token };
+      }
+    },
   },
 };
 

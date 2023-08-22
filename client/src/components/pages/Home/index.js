@@ -17,79 +17,48 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MenuListElement from "../../../elements/MenuListElement";
-
+import { useGetFilesQuery, GET_FILES } from "../../../apollo/queries/getFiles";
+import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 
 const drawerWidth = 240;
 
-
-// Define mutation
-const GET_FILES = gql`
-  mutation GetFiles($directory: String) {
-    getFiles(directory: $directory) {
-      name
-      size
-      ctime
-      path
-    }
-  }
-`;
-
-// Define query
-const GET_DIRECTORIES = gql`
-  query GetDirectories {
-    directories {
-      name
-      path
-      type
-      children {
-        name
-        path
-        type
-        children {
-          name
-          path
-          type
-          children {
-            name
-            path
-            type
-            children {
-              name
-              path
-              type
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-
-
 export default function PermanentDrawerLeft() {
-  const [actualData, setEvent] = useState();
   const [directories, setDirectories] = useState();
   const [contextMenu, setContextMenu] = useState(null);
   const [path, setPath] = useState(null);
+  const [selectedDirectory, setSelectedDirectory] = useState();
+  const [selectedFiles, setSelectedFiles] = useState();
 
-  const { loading, data, error } = useQuery(GET_DIRECTORIES, {
+  const { dataFiles, loadingFiles, errorFiles } = useQuery(GET_FILES, {
+    variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
       // console.log("completedData: ", completedData);
-      setDirectories(completedData.directories.children);
+      setSelectedFiles(completedData.getFiles);
     },
   });
 
-  useEffect(() => {
-    setDirectories(directories);
-  }, [directories]);
+  const { dataDirectories, loadingDirectories, errorDirectories } = useQuery(
+    GET_DIRECTORIES,
+    {
+      onCompleted: (completedData) => {
+        // console.log("completedData: ", completedData);
+        setDirectories(completedData.directories.children);
+      },
+    }
+  );
 
-  const [getFiles] = useMutation(GET_FILES);
-
-  if (loading) return "Loading...";
-  if (error) {
+  if (loadingDirectories) return "Loading...";
+  if (errorDirectories) {
     // Handle any errors that occurred during the query
-    console.error(error);
-    return <div>{error.message}</div>;
+    console.error(errorDirectories);
+    return <div>{errorDirectories.message}</div>;
+  }
+
+  if (loadingFiles) return "Loading...";
+  if (errorFiles) {
+    // Handle any errors that occurred during the query
+    console.error(errorFiles);
+    return <div>{errorFiles.message}</div>;
   }
 
   const handleContextMenu = (event) => {
@@ -180,12 +149,8 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   }
 
-  async function handleClick(path) {
-    // console.log("path: ", path);
-    const response = await getFiles({ variables: { directory: path } });
-    const actualData = response.data.getFiles;
-    // console.log(actualData);
-    setEvent(actualData);
+  function handleClick(path) {
+    setSelectedDirectory(path);
   }
 
   const renderItem = (node) => {
@@ -219,13 +184,18 @@ export default function PermanentDrawerLeft() {
       <CssBaseline />
       <AppBar
         position="fixed"
-        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`, flexDirection: "row", justifyContent: "flex-end"  }}
+        sx={{
+          width: `calc(100% - ${drawerWidth}px)`,
+          ml: `${drawerWidth}px`,
+          flexDirection: "row",
+          justifyContent: "flex-end",
+        }}
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div">
             Permanent drawer
           </Typography>
-          <MenuListElement/>
+          <MenuListElement />
         </Toolbar>
       </AppBar>
       <Drawer
@@ -257,7 +227,7 @@ export default function PermanentDrawerLeft() {
         <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
           {(() => {
-            if (actualData) {
+            if (selectedFiles) {
               return (
                 <div
                   onContextMenu={handleContextMenu}
@@ -270,7 +240,7 @@ export default function PermanentDrawerLeft() {
                       { field: "size", headerName: "Size" },
                       { field: "ctime", headerName: "Date" },
                     ]}
-                    rows={actualData}
+                    rows={selectedFiles}
                   />
                   <Menu
                     open={contextMenu !== null}

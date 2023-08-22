@@ -29,6 +29,7 @@ const typeDefs = `#graphql
     directories: Directory
     files(directory: String): [File]
     users: [User]
+    getFiles(directory: String): [File]
   }
 
   # Recursive loading of subfolders
@@ -44,7 +45,7 @@ const typeDefs = `#graphql
   }
 
   type Mutation {
-    getFiles(directory: String): [File]
+    
     login (username: String!, password: String!): Auth
     addUser(username: String!, password: String!): Auth
   }
