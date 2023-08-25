@@ -1,5 +1,4 @@
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client";
 
 export const GET_FILES = gql`
   query GetFiles($directory: String) {
@@ -11,7 +10,3 @@ export const GET_FILES = gql`
     }
   }
 `;
-
-export const useGetFilesQuery = () => {
-  return useQuery(GET_FILES);
-};

@@ -1,6 +1,8 @@
 const typeDefs = `#graphql
   # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
 
+  directive @auth on QUERY | FIELD_DEFINITION | FIELD
+
   # This "Directory" type defines the queryable fields for every directory in our data source.
   type Directory {
     path: String
@@ -26,10 +28,10 @@ const typeDefs = `#graphql
   # clients can execute, along with the return type for each. In this
   # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
-    directories: Directory
+    directories: Directory @auth
     files(directory: String): [File]
     users: [User]
-    getFiles(directory: String): [File]
+    getFiles(directory: String): [File] @auth
   }
 
   # Recursive loading of subfolders

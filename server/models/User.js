@@ -1,5 +1,5 @@
 const { Schema, model } = require("mongoose");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 
 const userSchema = new Schema(
   {
@@ -35,6 +35,11 @@ userSchema.pre("save", async function (next) {
 // compare the incoming password with the hashed password
 userSchema.methods.isCorrectPassword = async function (password) {
   return bcrypt.compare(password, this.password);
+};
+
+// Static methods for User model
+userSchema.statics.findByPk = async function (id) {
+  return this.findById(id);
 };
 
 const User = model("User", userSchema);

@@ -17,7 +17,9 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MenuListElement from "../../../elements/MenuListElement";
-import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
+// import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
+import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
+import { GET_FILES } from "../../../apollo/queries/getFiles";
 
 const drawerWidth = 240;
 

@@ -19,7 +19,6 @@ const LoginSignupForm = ({ changeLoginState }) => {
           <a onClick={() => setShowLogin(true)}>Want to login? Click here</a>
         </div>
       )}
-      ;
     </div>
   );
 };

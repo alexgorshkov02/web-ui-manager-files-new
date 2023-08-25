@@ -1,6 +1,5 @@
 const JWT = require("jsonwebtoken");
 const { User } = require("../models");
-
 const JWT_SECRET = "test";
 
 const {
@@ -37,7 +36,12 @@ const resolvers = {
       }
     },
     getFiles: (parent, { directory }, context) => {
-      // console.log("getFiles_Query: directory: ", directory);
+      // console.log("context.user in getFiles resolver: ", contextValue.user);
+      // In this case, we'll pretend there is no data when
+      // we're not logged in. Another option would be to
+      // throw an error.
+      if (!context.user) return null;
+
       if (typeof directory !== "string") {
         throw new Error('The "directory" argument must be a string.');
       }
@@ -48,8 +52,10 @@ const resolvers = {
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {
+      // console.log("context.user in login resolver:", context);
       try {
         const user = await User.findOne({ username });
+        console.log("user in login resolver: ", user);
         if (!user) {
           throw new AuthenticationError("Incorrect credentials");
         }
