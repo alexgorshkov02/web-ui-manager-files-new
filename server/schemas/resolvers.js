@@ -49,6 +49,9 @@ const resolvers = {
       // console.log("getFiles_Query: files: ", files);
       return files;
     },
+    currentUser(root, args, context) {
+      return context.user;
+    }
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {

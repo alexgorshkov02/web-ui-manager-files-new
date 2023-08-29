@@ -19,7 +19,7 @@ const typeDefs = `#graphql
   }
 
   type User {
-    _id: ID!
+    id: ID!
     username: String!
     password: String!
   }
@@ -32,6 +32,7 @@ const typeDefs = `#graphql
     files(directory: String): [File]
     users: [User]
     getFiles(directory: String): [File] @auth
+    currentUser: User @auth
   }
 
   # Recursive loading of subfolders
