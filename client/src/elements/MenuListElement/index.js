@@ -8,14 +8,26 @@ import MenuItem from "@mui/material/MenuItem";
 import MenuList from "@mui/material/MenuList";
 import Stack from "@mui/material/Stack";
 import { styled } from "@mui/material/styles";
+import { GET_CURRENT_USER } from "../../apollo/queries/currentUser";
+import { useQuery } from "@apollo/client";
+import { useState } from "react";
 
 const CustomizedButton = styled(Button)`
   color: #ffffff;
+  text-transform: none !important;
+  margin-right: 10px;
 `;
 
 export default function MenuListComposition() {
   const [open, setOpen] = React.useState(false);
   const anchorRef = React.useRef(null);
+  const [currentUser, setCurrentUser] = useState();
+  const { data, error, loading } = useQuery(GET_CURRENT_USER, {
+    onCompleted: (completedData) => {
+      console.log("completedData: ", completedData.currentUser.username);
+      setCurrentUser(completedData.currentUser.username);
+    },
+  });
 
   const handleToggle = () => {
     setOpen((prevOpen) => !prevOpen);
@@ -53,6 +65,13 @@ export default function MenuListComposition() {
     prevOpen.current = open;
   }, [open]);
 
+  if (loading) return "Loading...";
+  if (error) {
+    // Handle any errors that occurred during the query
+    console.error(error);
+    return <div>{error.message}</div>;
+  }
+
   return (
     <Stack direction="row" spacing={2}>
       <div>
@@ -64,7 +83,7 @@ export default function MenuListComposition() {
           aria-haspopup="true"
           onClick={handleToggle}
         >
-          User
+          {currentUser}
         </CustomizedButton>
         <Popper
           open={open}

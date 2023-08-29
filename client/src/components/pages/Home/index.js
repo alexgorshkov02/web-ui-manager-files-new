@@ -20,6 +20,19 @@ import MenuListElement from "../../../elements/MenuListElement";
 // import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
+import Button from "@mui/material/Button";
+import { styled } from "@mui/material/styles";
+import { purple, common } from "@mui/material/colors";
+
+const ColorButton = styled(Button)(({ theme }) => ({
+  color: theme.palette.primary.main,
+  fontWeight: "bold",
+  backgroundColor: common.white,
+  "&:hover": {
+    backgroundColor: common.white,
+  },
+  marginRight: "20px",
+}));
 
 const drawerWidth = 240;
 
@@ -186,15 +199,21 @@ export default function PermanentDrawerLeft() {
           width: `calc(100% - ${drawerWidth}px)`,
           ml: `${drawerWidth}px`,
           flexDirection: "row",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div">
-            Permanent drawer
+            <ColorButton variant="contained" size="large">
+              Dashboard
+            </ColorButton>
+            <ColorButton variant="contained" size="large">
+              Admin
+            </ColorButton>
           </Typography>
-          <MenuListElement />
         </Toolbar>
+        <MenuListElement/>
       </AppBar>
       <Drawer
         sx={{
