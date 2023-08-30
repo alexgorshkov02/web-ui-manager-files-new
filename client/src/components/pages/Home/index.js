@@ -2,10 +2,8 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import CssBaseline from "@mui/material/CssBaseline";
-import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
-import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import { useQuery } from "@apollo/client";
 import { useState } from "react";
@@ -16,24 +14,11 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import MenuListElement from "../../../elements/MenuListElement";
 // import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
-import Button from "@mui/material/Button";
-import { styled } from "@mui/material/styles";
-import { purple, common } from "@mui/material/colors";
 
-const ColorButton = styled(Button)(({ theme }) => ({
-  color: theme.palette.primary.main,
-  fontWeight: "bold",
-  backgroundColor: common.white,
-  "&:hover": {
-    backgroundColor: common.white,
-  },
-  marginRight: "20px",
-}));
-
+//Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
 
 export default function PermanentDrawerLeft() {
@@ -189,32 +174,10 @@ export default function PermanentDrawerLeft() {
           .filter((node) => node.type === "directory")
           .map((node) => renderItem(node))
       : null;
-
+  // console.log("styles:", styles);
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            <ColorButton variant="contained" size="large">
-              Dashboard
-            </ColorButton>
-            <ColorButton variant="contained" size="large">
-              Admin
-            </ColorButton>
-          </Typography>
-        </Toolbar>
-        <MenuListElement/>
-      </AppBar>
       <Drawer
         sx={{
           width: drawerWidth,

@@ -11,6 +11,7 @@ import { styled } from "@mui/material/styles";
 import { GET_CURRENT_USER } from "../../apollo/queries/currentUser";
 import { useQuery } from "@apollo/client";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const CustomizedButton = styled(Button)`
   color: #ffffff;
@@ -29,6 +30,8 @@ export default function MenuListComposition() {
     },
   });
 
+  const navigate = useNavigate();
+
   const handleToggle = () => {
     setOpen((prevOpen) => !prevOpen);
   };
@@ -44,6 +47,11 @@ export default function MenuListComposition() {
   //Add an auth check to log out
   const logout = () => {
     localStorage.removeItem("jwt");
+    // Close the menu
+    setOpen(false);
+    //Temp solution. Switch to navigate when Router is implemented
+    window.location.href = "/"; 
+    // navigate('/');
   };
 
   function handleListKeyDown(event) {
