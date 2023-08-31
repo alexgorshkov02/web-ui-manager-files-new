@@ -4,7 +4,7 @@ import MenuItem from "@mui/material/MenuItem";
 
 const LogoutMenuItem = ({ changeLoginState, client }) => {
   const logout = () => {
-    localStorage.removeItem("jwk");
+    localStorage.removeItem("jwt");
     changeLoginState(false);
     client.stop();
     client.resetStore();

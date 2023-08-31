@@ -8,10 +8,10 @@ import MenuItem from "@mui/material/MenuItem";
 import MenuList from "@mui/material/MenuList";
 import Stack from "@mui/material/Stack";
 import { styled } from "@mui/material/styles";
-import { GET_CURRENT_USER } from "../../apollo/queries/currentUser";
+import { GET_CURRENT_USER } from "../../../apollo/queries/currentUser";
 import { useQuery } from "@apollo/client";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import LogoutMenuItem from "../LogoutMenuItem";
 
 const CustomizedButton = styled(Button)`
   color: #ffffff;
@@ -19,7 +19,7 @@ const CustomizedButton = styled(Button)`
   margin-right: 10px;
 `;
 
-export default function MenuListComposition() {
+export default function MenuListComposition({ changeLoginState, client }) {
   const [open, setOpen] = React.useState(false);
   const anchorRef = React.useRef(null);
   const [currentUser, setCurrentUser] = useState();
@@ -30,8 +30,6 @@ export default function MenuListComposition() {
     },
   });
 
-  const navigate = useNavigate();
-
   const handleToggle = () => {
     setOpen((prevOpen) => !prevOpen);
   };
@@ -40,18 +38,7 @@ export default function MenuListComposition() {
     if (anchorRef.current && anchorRef.current.contains(event.target)) {
       return;
     }
-
     setOpen(false);
-  };
-
-  //Add an auth check to log out
-  const logout = () => {
-    localStorage.removeItem("jwt");
-    // Close the menu
-    setOpen(false);
-    //Temp solution. Switch to navigate when Router is implemented
-    window.location.href = "/"; 
-    // navigate('/');
   };
 
   function handleListKeyDown(event) {
@@ -118,7 +105,10 @@ export default function MenuListComposition() {
                     onKeyDown={handleListKeyDown}
                   >
                     <MenuItem onClick={handleClose}>Profile</MenuItem>
-                    <MenuItem onClick={logout}>Logout</MenuItem>
+                    <LogoutMenuItem
+                      changeLoginState={changeLoginState}
+                      client={client}
+                    />
                   </MenuList>
                 </ClickAwayListener>
               </Paper>
