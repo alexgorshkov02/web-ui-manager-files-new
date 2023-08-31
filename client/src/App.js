@@ -6,9 +6,9 @@ import Admin from "./components/pages/Admin";
 import React, { useState } from "react";
 import LoginSignupForm from "./components/pages/LoginSignup";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import NavBar from "./elements/NavBar";
+import NavBar from "./components/elements/NavBar";
 
-export default function App() {
+export default function App(client) {
   const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
   // console.log("loggedIn", loggedIn);
 
@@ -17,7 +17,7 @@ export default function App() {
       {loggedIn && (
         <div>
           <Router>
-            <NavBar />
+            <NavBar changeLoginState={setLoggedIn} client={client} />
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
