@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Button from "@mui/material/Button";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import Grow from "@mui/material/Grow";
@@ -8,10 +8,9 @@ import MenuItem from "@mui/material/MenuItem";
 import MenuList from "@mui/material/MenuList";
 import Stack from "@mui/material/Stack";
 import { styled } from "@mui/material/styles";
-import { GET_CURRENT_USER } from "../../../apollo/queries/currentUser";
-import { useQuery } from "@apollo/client";
-import { useState } from "react";
 import LogoutMenuItem from "../LogoutMenuItem";
+import { UserConsumer } from "../../user/UserConsumer";
+import UserBar from "../../user/UserBar";
 
 const CustomizedButton = styled(Button)`
   color: #ffffff;
@@ -20,15 +19,8 @@ const CustomizedButton = styled(Button)`
 `;
 
 export default function MenuListComposition({ changeLoginState, client }) {
-  const [open, setOpen] = React.useState(false);
-  const anchorRef = React.useRef(null);
-  const [currentUser, setCurrentUser] = useState();
-  const { data, error, loading } = useQuery(GET_CURRENT_USER, {
-    onCompleted: (completedData) => {
-      console.log("completedData: ", completedData.currentUser.username);
-      setCurrentUser(completedData.currentUser.username);
-    },
-  });
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef(null);
 
   const handleToggle = () => {
     setOpen((prevOpen) => !prevOpen);
@@ -51,21 +43,14 @@ export default function MenuListComposition({ changeLoginState, client }) {
   }
 
   // return focus to the button when we transitioned from !open -> open
-  const prevOpen = React.useRef(open);
-  React.useEffect(() => {
+  const prevOpen = useRef(open);
+  useEffect(() => {
     if (prevOpen.current === true && open === false) {
       anchorRef.current.focus();
     }
 
     prevOpen.current = open;
   }, [open]);
-
-  if (loading) return "Loading...";
-  if (error) {
-    // Handle any errors that occurred during the query
-    console.error(error);
-    return <div>{error.message}</div>;
-  }
 
   return (
     <Stack direction="row" spacing={2}>
@@ -78,8 +63,11 @@ export default function MenuListComposition({ changeLoginState, client }) {
           aria-haspopup="true"
           onClick={handleToggle}
         >
-          {currentUser}
+          <UserConsumer>
+            <UserBar />
+          </UserConsumer>
         </CustomizedButton>
+
         <Popper
           open={open}
           anchorEl={anchorRef.current}

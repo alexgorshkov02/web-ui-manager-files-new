@@ -10,6 +10,7 @@ const { authDirective } = require("./utils/auth");
 const { typeDefs, resolvers } = require("./schemas/index");
 const db = require("./config/connection");
 const { User } = require("./models");
+const { GraphQLError } = require("graphql");
 // const { printSchema } = require("graphql/utilities");
 
 const JWT = require("jsonwebtoken");
@@ -49,7 +50,7 @@ db.once("open", async () => {
     expressMiddleware(server, {
       context: async ({ req }) => {
         const authorization = req.headers.authorization;
-
+        // console.log("authorization: ", authorization);
         if (typeof authorization !== typeof undefined) {
           const search = "Bearer";
           const regEx = new RegExp(search, "ig");
@@ -57,7 +58,7 @@ db.once("open", async () => {
 
           try {
             const decodedToken = JWT.verify(token, JWT_SECRET);
-
+            // console.log("decodedToken: ", decodedToken);
             if (decodedToken) {
               const user = await User.findByPk(decodedToken.id);
               // console.log("user (server): ", user);
@@ -69,6 +70,11 @@ db.once("open", async () => {
           } catch (err) {
             // Handle token verification or user fetching errors
             console.error("Error verifying token:", err);
+            throw new GraphQLError("Invalid or expired token", {
+              extensions: {
+                code: "UNAUTHENTICATED",
+              },
+            });
           }
         }
         // Default context object when there's no valid token or user
