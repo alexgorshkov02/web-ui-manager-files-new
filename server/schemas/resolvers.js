@@ -11,10 +11,6 @@ const {
 const pathToRootDirectory = "C:\\testFolder";
 const directories = directoryTree(pathToRootDirectory);
 
-//Temp const directory. Should be changed
-const pathToSelectedDirectory = "C:\\testFolder\\folder5\\files";
-const files = getFilesFromSelectedDirectory(pathToSelectedDirectory);
-
 const resolvers = {
   Query: {
     directories: () => directories,

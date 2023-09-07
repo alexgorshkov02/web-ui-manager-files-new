@@ -25,14 +25,21 @@ const restLink = new RestLink({
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
-    graphQLErrors.map(({ message, locations, path }) =>
+    graphQLErrors.map(({ message, locations, path, extensions }) => {
+      // console.log("extensions.code: ", extensions.code);
       console.log(
         `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-      )
-    );
-    if (networkError) {
-      console.log(`[Netwok error]: ${networkError}`);
-    }
+      );
+
+      if (extensions.code === "UNAUTHENTICATED") {
+        localStorage.removeItem("jwt");
+        client.clearStore();
+      }
+      return null;
+    });
+  }
+  if (networkError) {
+    console.log(`[Netwok error]: ${networkError}`);
   }
 });
 
@@ -45,7 +52,7 @@ const client = new ApolloClient({
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <ApolloProvider client={client}>
-    <App client = {client}/>
+    <App />
   </ApolloProvider>
 );
 

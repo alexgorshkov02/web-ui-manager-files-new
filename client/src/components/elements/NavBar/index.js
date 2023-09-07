@@ -3,7 +3,7 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import MenuListElement from "../MenuListElement";
+import MenuListElement from "../menu/MenuListElement";
 import { useNavigate, useLocation } from "react-router-dom";
 import { common } from "@mui/material/colors";
 import { styled } from "@mui/material/styles";
@@ -17,8 +17,6 @@ const ColorButton = styled(Button)(({ theme }) => ({
   },
   marginRight: "20px",
 }));
-
-// const drawerWidth = 240;
 
 export default function NavBar({ changeLoginState, client }) {
   const location = useLocation();
