@@ -1,5 +1,5 @@
 const JWT = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, AdminParams } = require("../models");
 const JWT_SECRET = "test";
 
 const {
@@ -47,7 +47,15 @@ const resolvers = {
     },
     currentUser(root, args, context) {
       return context.user;
-    }
+    },
+    getAdminParams: async () => {
+      try {
+        const adminParams = await AdminParams.find();
+        return adminParams;
+      } catch (error) {
+        throw new Error("Error fetching admin params");
+      }
+    },
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {
@@ -81,6 +89,16 @@ const resolvers = {
         });
         return { token };
       }
+    },
+    setAdminParams: async (parent, { name, value }, context) => {
+      const existingEntity = await AdminParams.findOne({ name: name });
+      if (existingEntity) {
+        await AdminParams.updateOne({ name }, { $set: { value } });
+      } else {
+        console.log("name: ", name, "value: ", value)
+        await AdminParams.create({ name, value });
+      }
+      return null;
     },
   },
 };
