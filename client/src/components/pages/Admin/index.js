@@ -30,10 +30,6 @@ export default function Admin() {
   }, [adminParam]);
 
   const parameters = [
-    {
-      id: "ftp-server",
-      label: "FTP server",
-    },
     { id: "path-to-root-directory", label: "Path to root directory" },
   ];
 
