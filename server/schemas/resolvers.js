@@ -7,13 +7,24 @@ const {
   getFilesFromSelectedDirectory,
 } = require("../utils/directoryTree");
 
-//Temp const directory. Should be changed
-const pathToRootDirectory = "C:\\testFolder";
-const directories = directoryTree(pathToRootDirectory);
-
 const resolvers = {
   Query: {
-    directories: () => directories,
+    // directories: () => directories,
+    directories: async (parent, args, context) => {
+      const paramNamePathToRootDir = "path-to-root-directory";
+      const directoryParam = await AdminParams.findOne({
+        name: paramNamePathToRootDir,
+      });
+      // console.log(directoryfromDB);
+      if (directoryParam) {
+        // console.log("directoryfromDB.value: ", directoryfromDB.value);
+        const directories = directoryTree(directoryParam.value);
+        // console.log("directories: ", directories);
+        return directories;
+      } else {
+        return null;
+      }
+    },
     files: (parent, { directory }, context) => {
       console.log("files_Query: directory: ", directory);
 
@@ -31,7 +42,7 @@ const resolvers = {
         throw new Error("Error fetching users");
       }
     },
-    getFiles: (parent, { directory }, context) => {
+    getFiles: async (parent, { directory }, context) => {
       // console.log("context.user in getFiles resolver: ", contextValue.user);
       // In this case, we'll pretend there is no data when
       // we're not logged in. Another option would be to
@@ -41,9 +52,22 @@ const resolvers = {
       if (typeof directory !== "string") {
         throw new Error('The "directory" argument must be a string.');
       }
-      const files = getFilesFromSelectedDirectory(directory);
-      // console.log("getFiles_Query: files: ", files);
-      return files;
+
+      if (directory.length !== 0) {
+        const paramNamePathToRootDir = "path-to-root-directory";
+        const directoryParam = await AdminParams.findOne({
+          name: paramNamePathToRootDir,
+        });
+        if (directoryParam) {
+          // console.log("directory: ", directory);
+          const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
+          // console.log("fullDirectory: ", fullDirectory);
+          const files = getFilesFromSelectedDirectory(fullPathToDirectory);
+          return files;
+        } else {
+          return null;
+        }
+      } else return null;
     },
     currentUser(root, args, context) {
       return context.user;
@@ -95,7 +119,7 @@ const resolvers = {
       if (existingEntity) {
         await AdminParams.updateOne({ name }, { $set: { value } });
       } else {
-        console.log("name: ", name, "value: ", value)
+        console.log("name: ", name, "value: ", value);
         await AdminParams.create({ name, value });
       }
       return null;

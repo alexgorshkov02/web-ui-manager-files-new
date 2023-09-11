@@ -38,7 +38,7 @@ const typeDefs = `#graphql
     users: [User]
     getFiles(directory: String): [File] @auth
     currentUser: User @auth
-    getAdminParams: [AdminParams] 
+    getAdminParams: [AdminParams] @auth
   }
 
   # Recursive loading of subfolders
