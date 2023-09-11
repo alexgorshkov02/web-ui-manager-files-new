@@ -8,13 +8,15 @@ const http = require('http');
 // const path1 = "C:\\testFolder\\folder5\\files";
 
 function directoryTree(path) {
-  const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, (item, PATH, stats) => {
+  const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, null, (item, currentPath, stats) => {
+    item.path = PATH.basename(currentPath);
+    
     // console.log(item);
     // console.log(PATH);
     // console.log(stats);
   });
 
-  // console.log(tree);
+  // console.log("tree: ", tree);
   // console.log(tree.children[0]);
   return tree;
 }

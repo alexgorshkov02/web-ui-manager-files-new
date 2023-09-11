@@ -6,7 +6,7 @@ import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import { useQuery } from "@apollo/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import TreeItem from "@mui/lab/TreeItem";
 import TreeView from "@mui/lab/TreeView";
@@ -24,7 +24,7 @@ const drawerWidth = 240;
 export default function PermanentDrawerLeft() {
   const [directories, setDirectories] = useState();
   const [path, setPath] = useState(null);
-  const [selectedDirectory, setSelectedDirectory] = useState();
+  const [selectedDirectory, setSelectedDirectory] = useState("");
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
 
@@ -38,13 +38,26 @@ export default function PermanentDrawerLeft() {
     }
   );
 
-  const { dataFiles, loadingFiles, errorFiles } = useQuery(GET_FILES, {
+  const { dataFiles, loadingFiles, errorFiles, refetch: refetchFiles } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
-      // console.log("completedData: ", completedData);
-      setSelectedFiles(completedData.getFiles);
+      if (completedData.getFiles) {
+        setSelectedFiles(completedData.getFiles);
+      }
     },
   });
+
+  // Use a useEffect to refetch data when selectedDirectory changes
+  useEffect(() => {
+    if (selectedDirectory) {
+      // Refetch the dataFiles whenever selectedDirectory changes
+      refetchFiles().then((result) => {
+        if (result.data) {
+          setSelectedFiles(result.data.getFiles);
+        }
+      });
+    }
+  }, [selectedDirectory, refetchFiles]);
 
   if (loadingDirectories || loadingFiles) return "Loading...";
   if (errorDirectories || errorFiles) {
@@ -149,19 +162,25 @@ export default function PermanentDrawerLeft() {
     setSelectedDirectory(path);
   }
 
-  const renderItem = (node) => {
-    // console.log("Type: ", node.type);
+  const renderItem = (parentName, node) => {
+    // console.log("parentName: ", parentName);
+    // console.log("Type: ", node);
+    // console.log("parentName + node.path: ", parentName + node.path);
     return (
       <TreeItem
-        onClick={() => handleClick(node.path)}
+        onClick={() =>
+          handleClick(
+            parentName !== null ? parentName + "\\\\" + node.path : node.path
+          )
+        }
         key={node.name}
-        nodeId={node.path}
+        nodeId={parentName !== null ? parentName + node.path : node.path}
         label={node.name}
       >
         {Array.isArray(node.children)
           ? node.children
               .filter((child) => child.type === "directory")
-              .map((child) => renderItem(child))
+              .map((child) => renderItem(node.name, child))
           : null}
       </TreeItem>
     );
@@ -172,7 +191,7 @@ export default function PermanentDrawerLeft() {
     Array.isArray(nodes)
       ? nodes
           .filter((node) => node.type === "directory")
-          .map((node) => renderItem(node))
+          .map((node) => renderItem(null, node))
       : null;
   // console.log("styles:", styles);
   return (
