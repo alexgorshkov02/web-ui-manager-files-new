@@ -1,5 +1,5 @@
 const JWT = require("jsonwebtoken");
-const { User, AdminParams } = require("../models");
+const { User, AdminParams, Notification } = require("../models");
 const JWT_SECRET = "test";
 
 const {
@@ -80,6 +80,14 @@ const resolvers = {
         throw new Error("Error fetching admin params");
       }
     },
+    getNotifications: async () => {
+      try {
+        const notifications = await Notification.find();
+        return notifications;
+      } catch (error) {
+        throw new Error("Error fetching notifications");
+      }
+    },
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {
@@ -121,6 +129,16 @@ const resolvers = {
       } else {
         console.log("name: ", name, "value: ", value);
         await AdminParams.create({ name, value });
+      }
+      return null;
+    },
+    setNotification: async (parent, { directory, value }, context) => {
+      const existingEntity = await Notification.findOne({ directory });
+      if (existingEntity) {
+        await Notification.updateOne({ directory }, { $set: { value } });
+      } else {
+        console.log("directory: ", directory, "value: ", value);
+        await Notification.create({ directory, value });
       }
       return null;
     },
