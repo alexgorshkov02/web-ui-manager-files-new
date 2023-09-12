@@ -17,6 +17,7 @@ import MenuItem from "@mui/material/MenuItem";
 // import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
+import { Grid, Button, Stack } from "@mui/material";
 
 //Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
@@ -25,8 +26,13 @@ export default function PermanentDrawerLeft() {
   const [directories, setDirectories] = useState();
   const [path, setPath] = useState(null);
   const [selectedDirectory, setSelectedDirectory] = useState("");
+  const [nodeId, setNodeId] = useState();
+  const [nodeIds, setNodeIds] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
+
+  const [notification, setShowNotification] = useState(true);
+  const [expanded, setExpanded] = useState(["root"]);
 
   const { dataDirectories, loadingDirectories, errorDirectories } = useQuery(
     GET_DIRECTORIES,
@@ -38,7 +44,12 @@ export default function PermanentDrawerLeft() {
     }
   );
 
-  const { dataFiles, loadingFiles, errorFiles, refetch: refetchFiles } = useQuery(GET_FILES, {
+  const {
+    dataFiles,
+    loadingFiles,
+    errorFiles,
+    refetch: refetchFiles,
+  } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
       if (completedData.getFiles) {
@@ -49,7 +60,18 @@ export default function PermanentDrawerLeft() {
 
   // Use a useEffect to refetch data when selectedDirectory changes
   useEffect(() => {
+    // console.log("selectedDirectory: ", selectedDirectory);
     if (selectedDirectory) {
+      setShowNotification(false);
+
+      // Check the string does not contain '\\'. It will NOT be subfolders
+      // Check it has not been accepted yet
+      if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
+        setShowNotification(true);
+      } else {
+        setNodeIds([...nodeIds, nodeId]);
+      }
+
       // Refetch the dataFiles whenever selectedDirectory changes
       refetchFiles().then((result) => {
         if (result.data) {
@@ -58,6 +80,10 @@ export default function PermanentDrawerLeft() {
       });
     }
   }, [selectedDirectory, refetchFiles]);
+
+  useEffect(() => {
+    setExpanded(nodeIds);
+  }, [nodeIds]);
 
   if (loadingDirectories || loadingFiles) return "Loading...";
   if (errorDirectories || errorFiles) {
@@ -158,19 +184,32 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   }
 
-  function handleClick(path) {
+  function handleClick(path, nodeId) {
     setSelectedDirectory(path);
+    setNodeId(nodeId);
   }
 
+  function acceptNotification() {
+    setShowNotification(false);
+    setNodeIds([...nodeIds, nodeId]);
+  }
+
+  function declineNotification() {
+    setSelectedFiles(false);
+  }
+
+  //TODO: Check if it is possible to get rid of "node.path". After moving the root directory to the DB, it seems that "node.path" is equal to "node.name".
   const renderItem = (parentName, node) => {
     // console.log("parentName: ", parentName);
     // console.log("Type: ", node);
-    // console.log("parentName + node.path: ", parentName + node.path);
+    // console.log("parentName: ", parentName + " + node.path: " + node.path);
+    // console.log("node.name: ", node);
     return (
       <TreeItem
         onClick={() =>
           handleClick(
-            parentName !== null ? parentName + "\\\\" + node.path : node.path
+            parentName !== null ? parentName + "\\\\" + node.path : node.path,
+            parentName !== null ? parentName + node.path : node.path
           )
         }
         key={node.name}
@@ -215,8 +254,9 @@ export default function PermanentDrawerLeft() {
           <TreeView
             sx={{ height: 110, flexGrow: 1, maxWidth: 400 }}
             defaultCollapseIcon={<ExpandMoreIcon />}
-            defaultExpanded={["root"]}
             defaultExpandIcon={<ChevronRightIcon />}
+            // Use the expanded state
+            expanded={expanded}
           >
             {renderTree(directories)}
           </TreeView>
@@ -226,32 +266,61 @@ export default function PermanentDrawerLeft() {
         <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
           {selectedFiles ? (
-            <div
-              onContextMenu={handleContextMenu}
-              style={{ cursor: "context-menu" }}
-            >
-              <DataGrid
-                getRowId={(row) => row.path}
-                columns={[
-                  { field: "name", headerName: "Name" },
-                  { field: "size", headerName: "Size" },
-                  { field: "ctime", headerName: "Date" },
-                ]}
-                rows={selectedFiles}
-              />
-              <Menu
-                open={contextMenu !== null}
-                onClose={handleClose}
-                anchorReference="anchorPosition"
-                anchorPosition={
-                  contextMenu !== null
-                    ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                    : undefined
-                }
+            notification ? (
+              <div>
+                <Grid
+                  container
+                  justifyContent="center"
+                  alignItems="center"
+                  direction="column"
+                >
+                  Do you agree?
+                  <Stack direction="row" spacing={2}>
+                    <Button
+                      onClick={acceptNotification}
+                      variant="contained"
+                      color="success"
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      onClick={declineNotification}
+                      variant="contained"
+                      color="error"
+                    >
+                      Decline
+                    </Button>
+                  </Stack>
+                </Grid>
+              </div>
+            ) : (
+              <div
+                onContextMenu={handleContextMenu}
+                style={{ cursor: "context-menu" }}
               >
-                <MenuItem onClick={handleDownload}>Download</MenuItem>
-              </Menu>
-            </div>
+                <DataGrid
+                  getRowId={(row) => row.path}
+                  columns={[
+                    { field: "name", headerName: "Name" },
+                    { field: "size", headerName: "Size" },
+                    { field: "ctime", headerName: "Date" },
+                  ]}
+                  rows={selectedFiles}
+                />
+                <Menu
+                  open={contextMenu !== null}
+                  onClose={handleClose}
+                  anchorReference="anchorPosition"
+                  anchorPosition={
+                    contextMenu !== null
+                      ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                      : undefined
+                  }
+                >
+                  <MenuItem onClick={handleDownload}>Download</MenuItem>
+                </Menu>
+              </div>
+            )
           ) : (
             <div>Select a folder</div>
           )}
