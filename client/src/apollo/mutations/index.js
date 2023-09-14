@@ -1,4 +1,5 @@
 export * from "./login";
 export * from "./signup";
 export * from "./setAdminParams";
-export * from "./setNotification";
+export * from "./addOrUpdateNotification";
+export * from "./deleteNotification";

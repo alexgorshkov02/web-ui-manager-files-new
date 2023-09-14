@@ -88,6 +88,25 @@ const resolvers = {
         throw new Error("Error fetching notifications");
       }
     },
+    getNotification: async (parent, { directory }, context) => {
+      console.log("directory: ", directory);
+      if (typeof directory !== "string") {
+        throw new Error('The "directory" argument must be a string.');
+      }
+
+      if (directory.length !== 0) {
+        const value = await Notification.findOne({
+          directory,
+        });
+        if (value) {
+          console.log("value: ", value);
+
+          return value;
+        } else {
+          return null;
+        }
+      } else return null;
+    },
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {
@@ -132,13 +151,24 @@ const resolvers = {
       }
       return null;
     },
-    setNotification: async (parent, { directory, value }, context) => {
+    addOrUpdateNotification: async (parent, { directory, value }, context) => {
       const existingEntity = await Notification.findOne({ directory });
       if (existingEntity) {
         await Notification.updateOne({ directory }, { $set: { value } });
       } else {
         console.log("directory: ", directory, "value: ", value);
         await Notification.create({ directory, value });
+      }
+      return null;
+    },
+    deleteNotification: async (parent, { directory }, context) => {
+      console.log("directory: ", directory);
+      const result = await Notification.deleteOne({ directory });
+
+      if (result.deletedCount === 1) {
+        console.log("Directory deleted successfully");
+      } else {
+        console.log("Directory not found or not deleted");
       }
       return null;
     },

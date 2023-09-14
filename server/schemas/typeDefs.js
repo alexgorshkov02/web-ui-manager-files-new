@@ -44,7 +44,7 @@ const typeDefs = `#graphql
     getFiles(directory: String): [File] @auth
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
-    getNotification: Notification
+    getNotification(directory: String): Notification
     getNotifications: [Notification]
   }
 
@@ -64,7 +64,8 @@ const typeDefs = `#graphql
     login(username: String!, password: String!): Auth
     signup(username: String!, password: String!): Auth
     setAdminParams(name: String!, value: String): AdminParams
-    setNotification(directory: String!, value: String): AdminParams
+    addOrUpdateNotification(directory: String!, value: String): Notification
+    deleteNotification(directory: String!): Notification
   }
 `;
 
