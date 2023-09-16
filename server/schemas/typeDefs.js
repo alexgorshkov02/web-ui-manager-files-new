@@ -30,6 +30,8 @@ const typeDefs = `#graphql
   }
 
   type Notification {
+    id: ID!
+    customer: String
     directory: String
     value: String
   }
@@ -64,8 +66,8 @@ const typeDefs = `#graphql
     login(username: String!, password: String!): Auth
     signup(username: String!, password: String!): Auth
     setAdminParams(name: String!, value: String): AdminParams
-    addOrUpdateNotification(directory: String!, value: String): Notification
-    deleteNotification(directory: String!): Notification
+    addOrUpdateNotification(id: ID, customer: String, directory: String!, value: String): Notification
+    deleteNotification(id: ID!): Notification
   }
 `;
 

@@ -2,6 +2,12 @@ const { Schema, model } = require("mongoose");
 
 const notificationSchema = new Schema(
   {
+    customer: {
+      type: String,
+      required: false,
+      unique: false,
+      trim: true,
+    },
     directory: {
       type: String,
       required: true,

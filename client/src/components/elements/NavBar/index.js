@@ -22,7 +22,7 @@ export default function NavBar({ changeLoginState, client }) {
   const location = useLocation();
   let position = "sticky";
   let drawerWidth = 0;
-  if (location.pathname !== "/admin") {
+  if (location.pathname == "/") {
     position = "fixed";
     drawerWidth = 240;
   }

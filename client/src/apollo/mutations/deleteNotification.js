@@ -1,9 +1,9 @@
 import { gql, useMutation } from "@apollo/client";
 
 const DELETE_NOTIFICATION = gql`
-mutation deleteNotification($directory: String!) {
-    deleteNotification(directory: $directory) {
-      directory
+mutation deleteNotification($id: ID!) {
+    deleteNotification(id: $id) {
+      id
     }
   }
 `;

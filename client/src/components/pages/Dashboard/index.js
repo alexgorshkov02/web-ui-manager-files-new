@@ -1,55 +1,90 @@
-import Drawer from "@mui/material/Drawer";
-import CssBaseline from "@mui/material/CssBaseline";
-import Toolbar from "@mui/material/Toolbar";
-import List from "@mui/material/List";
-import Divider from "@mui/material/Divider";
-import { useQuery } from "@apollo/client";
-import { useState, useEffect } from "react";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
+import * as React from "react";
+import { useState, useEffect, createRef } from "react";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Box from "@mui/material/Box";
-import AddIcon from "@mui/icons-material/Add";
 import TextField from "@mui/material/TextField";
-import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import TextareaAutosize from "@mui/material/TextareaAutosize";
+import { styled } from "@mui/material/styles";
+import Paper from "@mui/material/Paper";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import EditIcon from "@mui/icons-material/Edit";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+// import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { useQuery } from "@apollo/client";
 import { GET_NOTIFICATIONS } from "../../../apollo/queries/getNotifications";
 import {
   useSetNotification,
   useDeleteNotification,
 } from "../../../apollo/mutations";
 
-const drawerWidth = 240;
+//TODO: Add checking for the mandatory fields: directory and value. Show an error if they are missed
+//TODO: Show an error in UI if a user tries to add an existed directory
+
+const dialogStyles = {
+  maxWidth: "80vw",
+  maxHeight: "80vh",
+  overflowX: "hidden",
+  margin: "auto",
+  marginTop: "5vh",
+  position: "relative",
+};
+
+const resizableHandleStyles = {
+  width: "10px",
+  height: "10px",
+  position: "absolute",
+  bottom: "0",
+  right: "0",
+  cursor: "auto",
+};
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  backgroundColor: theme.palette.mode === "dark" ? "#1A2027" : "#fff",
+  ...theme.typography.body2,
+  padding: theme.spacing(2),
+  maxWidth: "auto",
+  color: theme.palette.text.primary,
+}));
+
+const headerStyle = {
+  fontWeight: "bold",
+};
+
+// Define a CSS class for the hover effect
+const hoverClass = {
+  "&:hover": {
+    backgroundColor: "#f0f0f0",
+  },
+};
 
 export default function Dashboard() {
   const [notifications, setNotifications] = useState([]);
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [value, setInputValue] = useState("");
-  const [isInputVisible, setIsInputVisible] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [id, setId] = useState("");
+  const [customer, setCustomer] = useState("");
+  const [directory, setDirectory] = useState("");
+  const [value, setValue] = useState("");
+  const handleValueChange = (value) => {
+    setValue(value);
+  };
+  const dialogRef = createRef();
 
-  const [
-    addOrUpdateNotification
-    // { loadingAddOrUpdateNotification, errorAddOrUpdateNotification },
-  ] = useSetNotification();
-
-  const [
-    deleteNotification
-    // { loadingDeleteNotification, errorDeleteNotification },
-  ] = useDeleteNotification();
-
-  const {
-    // data,
-    // loading,
-    // error,
-    refetch: refetchNotifications,
-  } = useQuery(GET_NOTIFICATIONS, {
+  const { refetch: refetchNotifications } = useQuery(GET_NOTIFICATIONS, {
     onCompleted: (completedData) => {
       setNotifications(completedData.getNotifications);
     },
   });
+
+  const [addOrUpdateNotification] = useSetNotification();
+  const [deleteNotification] = useDeleteNotification();
 
   useEffect(() => {
     refetchNotifications().then((result) => {
@@ -57,215 +92,294 @@ export default function Dashboard() {
         setNotifications(result.data.getNotifications);
       }
     });
-  }, [notifications, refetchNotifications]);
+  }, [notifications, open, refetchNotifications]);
 
-  const handleNotificationClick = (notification) => {
-    setInputValue("");
-    setIsInputVisible(false);
-    setSelectedNotification(notification);
-  };
-
-  const handleAddNotificationClick = (event) => {
-    setSelectedNotification(null);
-    console.log("Clicked", event.currentTarget);
-    setAnchorEl(anchorEl ? null : event?.currentTarget);
-    setIsInputVisible(true);
-  };
-
-  const handleInputChange = (event) => {
-    console.log("event.target.value: ", event.target.value);
-    const { value } = event.target;
-    setInputValue(value);
-  };
-
-  const handleSaveDirectoryClick = () => {
-    // Handle the logic to save the input value as a notification
-
-    console.log("Saved notification:", value);
-    // console.log("event.target: ", event.target);
-    // console.log("name: ", paramName, "value: ", newValue);
-    try {
-      addOrUpdateNotification({
-        variables: { directory: value, value: "" },
-      });
-    } catch (error) {
-      console.error("Error: ", error);
+  useEffect(() => {
+    if (!open) {
+      setId("");
+      setCustomer("");
+      setDirectory("");
+      setValue("");
     }
+  }, [open]);
 
-    setNotifications([...notifications, value]); // Update the state with the new array
-
-    // Clear the input field and hide it
-    setInputValue("");
-    setIsInputVisible(false);
+  const handleCloseClick = () => {
+    setOpen(false);
   };
 
-  const handleCancelClick = () => {
-    // console.log("Cancelled");
-    
-    // Clear the input field and hide it
-    setInputValue("");
-    setIsInputVisible(false);
-    setSelectedNotification(null);
+  const handleAddNotificationClick = () => {
+    setOpen(true);
   };
 
-  const handleDeleteNotificationClick = (notification) => {
-    // Handle the logic to save the input value as a notification
-    console.log("notification: ", notification);
-    try {
-      deleteNotification({
-        variables: { directory: notification.directory },
-      });
-    } catch (error) {
-      console.error("Error: ", error);
-    }
-    const newNotifications = notifications.filter((not) => {
-      // Replace "valueToRemove" with the specific value you want to remove
-      return not.directory !== notification.directory;
-    });
-
-    // Update the state with the new array
-    setNotifications(newNotifications);
-  };
-
-  const handleSaveNotificationClick = (event) => {
-    // Handle the logic to save the input value as a notification
-
-    console.log("Saved notification:", selectedNotification);
-    console.log("value: ", value);
-    // console.log("name: ", paramName, "value: ", newValue);
-    // const newValue = event.target.value;
+  const handleSaveClick = () => {
+    // console.log("id: ", id);
+    // console.log("customer: ", customer);
+    // console.log("directory: ", directory);
+    // console.log("value: ", value);
     try {
       addOrUpdateNotification({
         variables: {
-          directory: selectedNotification.directory,
+          id: id,
+          customer: customer,
+          directory: directory,
           value: value,
         },
       });
     } catch (error) {
-      console.error("Error: ", error);
+      console.error("Error while saving a notification: ", error);
     }
 
-    const updatedData = notifications.map((notification) => {
-      if (notification.directory === selectedNotification.directory) {
-        // If the id matches, update the age field
-        return { ...notification, value: value };
-      }
-      return notification; // Otherwise, return the original object
-    });
-    console.log("updatedData: ", updatedData);
-    setNotifications(updatedData); // Update the state with the new array
-
-    // Clear the input field and hide it
-    // setInputValue("");
-    setIsInputVisible(false);
+    handleCloseClick();
   };
 
-  return (
-    <Box sx={{ display: "flex" }}>
-      <CssBaseline />
-      <Drawer
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-          },
-        }}
-        variant="permanent"
-        anchor="left"
-        style={{ zIndex: 100 }}
-      >
-        <Toolbar />
-        <Divider />
+  const handleDeleteNotificationClick = (id) => {
+    // console.log("id: ", id);
+    try {
+      deleteNotification({
+        variables: { id },
+      });
+    } catch (error) {
+      console.error("Error while deleting a notification: ", error);
+    }
+    const notificationsWithoutDeletedOne = notifications.filter(
+      (notification) => {
+        return notification.id !== id;
+      }
+    );
 
-        <List>
-          {notifications.map((notification, index) => (
-            <ListItemButton
-              key={index}
-              selected={selectedNotification === notification}
-              onClick={() => handleNotificationClick(notification)}
+    setNotifications(notificationsWithoutDeletedOne);
+  };
+
+  const handleEditNotificationClick = (id, customer, directory, value) => {
+    setId(id);
+    if (!customer) customer = "";
+    setCustomer(customer);
+    setDirectory(directory);
+    setValue(value);
+    setOpen(true);
+  };
+
+  function removeHtmlTags(input) {
+    // Use a regular expression to match and remove HTML tags
+    return input.replace(/<[^>]*>/g, "");
+  }
+
+  const renderItem = (node) => {
+    // console.log("node.customer: ", node.customer);
+    return (
+      <Box sx={{ flexGrow: 1, overflow: "hidden", px: 3 }} key={node.id}>
+        <StyledPaper
+          sx={{
+            my: 1,
+            mx: "auto",
+            p: 2,
+            transition: "background-color 0.3s ease",
+            // padding: "16px"
+            ...hoverClass,
+          }}
+        >
+          <Grid container wrap="nowrap" spacing={2}>
+            <Grid item xs={2} zeroMinWidth>
+              <Typography noWrap> {node.customer} </Typography>
+            </Grid>
+
+            <Grid item xs={2} zeroMinWidth>
+              <Typography noWrap> {node.directory} </Typography>
+            </Grid>
+
+            <Grid item xs={7} zeroMinWidth>
+              <Typography noWrap> {removeHtmlTags(node.value)} </Typography>
+            </Grid>
+
+            <Grid
+              item
+              xs={1}
+              sx={{ display: "flex", justifyContent: "flex-end" }}
             >
-              <ListItemText primary={notification.directory} />
               <IconButton
+                sx={{ marginLeft: "20px", zIndex: 1 }}
                 edge="end"
                 aria-label="delete"
-                onClick={() => handleDeleteNotificationClick(notification)}
+                onClick={() =>
+                  handleEditNotificationClick(
+                    node.id,
+                    node.customer,
+                    node.directory,
+                    node.value
+                  )
+                }
+              >
+                <EditIcon />
+              </IconButton>
+              <IconButton
+                sx={{ marginLeft: "20px", zIndex: 1 }}
+                edge="end"
+                aria-label="delete"
+                onClick={() => handleDeleteNotificationClick(node.id)}
               >
                 <DeleteIcon />
               </IconButton>
-            </ListItemButton>
-          ))}
-          {isInputVisible ? (
-            <Box>
-              <TextField
-                fullWidth
-                label="Type a new notification"
-                value={value}
-                onChange={handleInputChange}
-              />
-              <IconButton
-                color="primary"
-                aria-label="Save"
-                onClick={(event) => handleSaveDirectoryClick(event)}
-              >
-                <CheckIcon fontSize="large" />
-              </IconButton>
-              <IconButton
-                aria-label="Add"
-                onClick={handleCancelClick}
-                color="primary"
-              >
-                <CloseIcon fontSize="large" />
-              </IconButton>
-            </Box>
-          ) : (
-            <IconButton
-              aria-label="Add"
-              onClick={handleAddNotificationClick}
-              color="primary"
-            >
-              <AddIcon fontSize="large" />
-            </IconButton>
-          )}
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
-        <Toolbar />
-        <div style={{ height: 400, width: "100%" }}>
-          {selectedNotification ? (
-            <Box>
-              <TextareaAutosize
-                minRows={4} // Set the minimum number of rows
-                maxRows={10} // Set the maximum number of rows (optional)
-                value={value ? value : selectedNotification?.value}
-                onChange={handleInputChange}
-                style={{
-                  width: "100%",
-                  resize: "vertical",
-                  overflow: "auto",
-                }}
-              />
-              <IconButton
-                color="primary"
-                aria-label="Save"
-                onClick={(event) => handleSaveNotificationClick(event)}
-              >
-                <CheckIcon fontSize="large" />
-              </IconButton>
-              <IconButton
-                aria-label="Add"
-                onClick={handleCancelClick}
-                color="primary"
-              >
-                <CloseIcon fontSize="large" />
-              </IconButton>
-            </Box>
-          ) : (
-            <div>Select a notification</div>
-          )}
-        </div>
+            </Grid>
+          </Grid>
+        </StyledPaper>
       </Box>
+    );
+  };
+
+  const renderGrid = (nodes) => {
+    if (Array.isArray(nodes) && nodes.length > 0) {
+      return (
+        <Box
+          sx={{
+            // Make the container scrollable
+            overflow: "auto",
+            height: "calc(100vh - 100px)",
+          }}
+        >
+          <Box
+            sx={{ flexGrow: 1, px: 3, position: "sticky", top: 0, zIndex: 2 }}
+          >
+            <StyledPaper
+              sx={{
+                my: 1,
+                mx: "auto",
+                p: 2,
+                overflow: "hidden",
+              }}
+            >
+              <Grid container wrap="nowrap" spacing={2}>
+                <Grid item xs={2} zeroMinWidth>
+                  <Typography noWrap style={headerStyle}>
+                    Customer Name
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={2} zeroMinWidth>
+                  <Typography noWrap style={headerStyle}>
+                    Folder Name
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={2} zeroMinWidth>
+                  <Typography noWrap style={headerStyle}>
+                    Notification
+                  </Typography>
+                </Grid>
+
+                <Grid
+                  item
+                  xs={6}
+                  zeroMinWidth
+                  sx={{ display: "flex", justifyContent: "flex-end" }}
+                >
+                  <Button
+                    onClick={handleAddNotificationClick}
+                    color="primary"
+                    variant="contained"
+                  >
+                    Add notification
+                  </Button>
+                </Grid>
+              </Grid>
+            </StyledPaper>
+          </Box>
+          {nodes.map((node) => renderItem(node))}
+        </Box>
+      );
+    } else return null;
+  };
+
+  return (
+    <Box>
+      {renderGrid(notifications)}
+      <Dialog
+        open={open}
+        onClose={handleCloseClick}
+        fullWidth
+        PaperProps={{
+          sx: dialogStyles,
+        }}
+        ref={dialogRef}
+      >
+        <div style={resizableHandleStyles} />
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          {id ? "Edit the notification" : "Add a new notification"}
+          <IconButton
+            edge="end"
+            color="primary"
+            onClick={handleCloseClick}
+            aria-label="close"
+            sx={{ position: "absolute", top: 0, right: 10, color: "red" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Customer Name (optional)"
+            fullWidth
+            variant="outlined"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+            sx={{
+              marginTop: "10px",
+            }}
+          />
+
+          <TextField
+            label="Folder Name"
+            fullWidth
+            variant="outlined"
+            value={directory}
+            onChange={(e) => setDirectory(e.target.value)}
+            sx={{
+              marginTop: "10px",
+            }}
+          />
+
+          <ReactQuill
+            value={value}
+            onChange={handleValueChange}
+            style={{ marginTop: "10px" }}
+            modules={{
+              toolbar: [
+                [{ header: "1" }, { header: "2" }],
+                ["bold", "italic", "underline", "strike"],
+                [{ align: [] }],
+                ["link", "image"],
+                [{ list: "ordered" }, { list: "bullet" }],
+                ["clean"],
+              ],
+            }}
+            formats={[
+              "header",
+              "bold",
+              "italic",
+              "underline",
+              "strike",
+              "link",
+              "image",
+              "list",
+              "bullet",
+              "align",
+            ]}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSaveClick} color="primary" variant="contained">
+            Save
+          </Button>
+          <Button onClick={handleCloseClick} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

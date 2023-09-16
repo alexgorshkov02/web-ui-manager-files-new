@@ -21,6 +21,7 @@ import { GET_NOTIFICATION } from "../../../apollo/queries/getNotification";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
 import { Grid, Button, Stack } from "@mui/material";
 import Typography from "@mui/material/Typography";
+import "react-quill/dist/quill.snow.css";
 
 //Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
@@ -36,6 +37,9 @@ export default function PermanentDrawerLeft() {
   const [notification, setNotification] = useState();
   const [expanded, setExpanded] = useState(["root"]);
   const [loading, setLoading] = useState(false);
+  const sanitizeHTML = (html) => {
+    return { __html: html };
+  };
 
   useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
@@ -359,19 +363,14 @@ export default function PermanentDrawerLeft() {
           ) : selectedFiles ? (
             notification ? (
               <div>
-                <Grid
-                  container
-                  justifyContent="center"
-                  alignItems="center"
-                  direction="column"
-                >
+                <Grid container direction="column">
                   <Typography
                     variant="body1"
                     style={{ whiteSpace: "pre-wrap", padding: "16px" }}
                   >
-                    {notification}
+                    <span className="view ql-editor" dangerouslySetInnerHTML={sanitizeHTML(notification)} />
                   </Typography>
-                  <Stack direction="row" spacing={2}>
+                  <Stack direction="row" spacing={2} justifyContent="center">
                     <Button
                       onClick={acceptNotification}
                       variant="contained"
@@ -408,7 +407,7 @@ export default function PermanentDrawerLeft() {
                   ]}
                   rows={selectedFiles}
                   onRowDoubleClick={(params) => {
-                    const selectedFile = params.row; 
+                    const selectedFile = params.row;
                     handleDoubleClick(selectedFile);
                     // console.log(`Opening file: ${selectedFile.name}`);
                   }}

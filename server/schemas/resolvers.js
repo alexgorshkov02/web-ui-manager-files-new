@@ -7,6 +7,20 @@ const {
   getFilesFromSelectedDirectory,
 } = require("../utils/directoryTree");
 
+const sortByDirectories = (notifications) => {
+  const sortedNotifications = [...notifications];
+
+  sortedNotifications.sort((a, b) => {
+    const directoryA = a.directory.toLowerCase();
+    const directoryB = b.directory.toLowerCase();
+    if (directoryA < directoryB) return -1;
+    if (directoryA > directoryB) return 1;
+    return 0;
+  });
+
+  return sortedNotifications;
+};
+
 const resolvers = {
   Query: {
     // directories: () => directories,
@@ -83,7 +97,8 @@ const resolvers = {
     getNotifications: async () => {
       try {
         const notifications = await Notification.find();
-        return notifications;
+        const sortedNotifications = sortByDirectories(notifications);
+        return sortedNotifications;
       } catch (error) {
         throw new Error("Error fetching notifications");
       }
@@ -151,19 +166,37 @@ const resolvers = {
       }
       return null;
     },
-    addOrUpdateNotification: async (parent, { directory, value }, context) => {
-      const existingEntity = await Notification.findOne({ directory });
-      if (existingEntity) {
-        await Notification.updateOne({ directory }, { $set: { value } });
+
+    addOrUpdateNotification: async (
+      parent,
+      { id, customer, directory, value },
+      context
+    ) => {
+      if (id) {
+        const existingDirectory = await Notification.findOne({ _id: id });
+        // console.log("existingDirectory: ", existingDirectory);
+        if (existingDirectory) {
+          if (existingDirectory._id !== id) {
+            await Notification.updateOne(
+              { _id: id },
+              { $set: { customer, directory, value } }
+            );
+          } else {
+            console.log(
+              "Found duplicate directory. Change the existing directory"
+            );
+          }
+        }
       } else {
-        console.log("directory: ", directory, "value: ", value);
-        await Notification.create({ directory, value });
+        // console.log("directory: ", directory, "value: ", value);
+        await Notification.create({ customer, directory, value });
       }
       return null;
     },
-    deleteNotification: async (parent, { directory }, context) => {
-      console.log("directory: ", directory);
-      const result = await Notification.deleteOne({ directory });
+
+    deleteNotification: async (parent, { id }, context) => {
+      console.log("id: ", id);
+      const result = await Notification.deleteOne({ _id: id });
 
       if (result.deletedCount === 1) {
         console.log("Directory deleted successfully");
