@@ -9,6 +9,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/elements/NavBar";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import { withApollo } from "@apollo/client/react/hoc";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const App = ({ client }) => {
   const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
@@ -37,7 +38,19 @@ const App = ({ client }) => {
     };
   }, [client, loggedIn]);
 
-  if (loading) return "Loading...";
+  if (loading)
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+        }}
+      >
+        <CircularProgress />
+      </div>
+    );
 
   return (
     <div>

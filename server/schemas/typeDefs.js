@@ -29,6 +29,13 @@ const typeDefs = `#graphql
     value: String
   }
 
+  type Notification {
+    id: ID!
+    customer: String
+    directory: String
+    value: String
+  }
+
   # The "Query" type is special: it lists all of the available queries that
   # clients can execute, along with the return type for each. In this
   # case, the "directories" query returns an array of zero or more Directories (defined above).
@@ -39,6 +46,8 @@ const typeDefs = `#graphql
     getFiles(directory: String): [File] @auth
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
+    getNotification(directory: String): Notification
+    getNotifications: [Notification]
   }
 
   # Recursive loading of subfolders
@@ -57,6 +66,9 @@ const typeDefs = `#graphql
     login(username: String!, password: String!): Auth
     signup(username: String!, password: String!): Auth
     setAdminParams(name: String!, value: String): AdminParams
+    addNotification(customer: String, directory: String!, value: String): Notification
+    updateNotification(id: ID!, customer: String, directory: String!, value: String): Notification
+    deleteNotification(id: ID!): Notification
   }
 `;
 

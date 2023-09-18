@@ -1,11 +1,25 @@
 const JWT = require("jsonwebtoken");
-const { User, AdminParams } = require("../models");
+const { User, AdminParams, Notification } = require("../models");
 const JWT_SECRET = "test";
 
 const {
   directoryTree,
   getFilesFromSelectedDirectory,
 } = require("../utils/directoryTree");
+
+const sortByDirectories = (notifications) => {
+  const sortedNotifications = [...notifications];
+
+  sortedNotifications.sort((a, b) => {
+    const directoryA = a.directory.toLowerCase();
+    const directoryB = b.directory.toLowerCase();
+    if (directoryA < directoryB) return -1;
+    if (directoryA > directoryB) return 1;
+    return 0;
+  });
+
+  return sortedNotifications;
+};
 
 const resolvers = {
   Query: {
@@ -80,6 +94,34 @@ const resolvers = {
         throw new Error("Error fetching admin params");
       }
     },
+    getNotifications: async () => {
+      try {
+        const notifications = await Notification.find();
+        const sortedNotifications = sortByDirectories(notifications);
+        return sortedNotifications;
+      } catch (error) {
+        throw new Error("Error fetching notifications");
+      }
+    },
+    getNotification: async (parent, { directory }, context) => {
+      console.log("directory: ", directory);
+      if (typeof directory !== "string") {
+        throw new Error('The "directory" argument must be a string.');
+      }
+
+      if (directory.length !== 0) {
+        const value = await Notification.findOne({
+          directory,
+        });
+        if (value) {
+          console.log("value: ", value);
+
+          return value;
+        } else {
+          return null;
+        }
+      } else return null;
+    },
   },
   Mutation: {
     login: async (parent, { username, password }, context) => {
@@ -121,6 +163,64 @@ const resolvers = {
       } else {
         console.log("name: ", name, "value: ", value);
         await AdminParams.create({ name, value });
+      }
+      return null;
+    },
+
+    addNotification: async (
+      parent,
+      { customer, directory, value },
+      context
+    ) => {
+      const existingDirectory = await Notification.findOne({ directory });
+      console.log("existingDirectory: ", existingDirectory);
+
+      if (!existingDirectory) {
+        await Notification.create({ customer, directory, value });
+      } else {
+        console.log("Found duplicate directory. Change the existing directory");
+        const message =
+          "Duplicate folder has been found. Please change a notification for the existing folder";
+        throw new Error(message, {
+          extensions: { code: "DUPLICATE_ENTITY" },
+        });
+      }
+
+      return null;
+    },
+
+    updateNotification: async (
+      parent,
+      { id, customer, directory, value },
+      context
+    ) => {
+      const existingNotification = await Notification.findOne({ _id: id });
+      console.log("existingNotification: ", existingNotification);
+
+      if (existingNotification) {
+        await Notification.updateOne(
+          { _id: id },
+          { $set: { customer, directory, value } }
+        );
+      } else {
+        console.log("Notification has not been found");
+        const message = "Notification has not been found. It was not updated";
+        throw new Error(message, {
+          extensions: { code: "NO_ENTITY_FOUND" },
+        });
+      }
+
+      return null;
+    },
+
+    deleteNotification: async (parent, { id }, context) => {
+      console.log("id: ", id);
+      const result = await Notification.deleteOne({ _id: id });
+
+      if (result.deletedCount === 1) {
+        console.log("Directory deleted successfully");
+      } else {
+        console.log("Directory not found or not deleted");
       }
       return null;
     },

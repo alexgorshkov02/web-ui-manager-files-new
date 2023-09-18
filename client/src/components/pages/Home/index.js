@@ -14,40 +14,44 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import CircularProgress from "@mui/material/CircularProgress";
 // import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
+import { GET_NOTIFICATION } from "../../../apollo/queries/getNotification";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
 import { Grid, Button, Stack } from "@mui/material";
+import Typography from "@mui/material/Typography";
+import "react-quill/dist/quill.snow.css";
 
 //Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
 
 export default function PermanentDrawerLeft() {
-  const [directories, setDirectories] = useState();
-  const [path, setPath] = useState(null);
   const [selectedDirectory, setSelectedDirectory] = useState("");
+  const [directories, setDirectories] = useState();
   const [nodeId, setNodeId] = useState();
   const [nodeIds, setNodeIds] = useState([]);
+  const [path, setPath] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
-
-  const [notification, setShowNotification] = useState(true);
+  const [notification, setNotification] = useState();
   const [expanded, setExpanded] = useState(["root"]);
+  const [loading, setLoading] = useState(false);
+  const sanitizeHTML = (html) => {
+    return { __html: html };
+  };
 
-  const { dataDirectories, loadingDirectories, errorDirectories } = useQuery(
-    GET_DIRECTORIES,
-    {
-      onCompleted: (completedData) => {
-        // console.log("completedData: ", completedData);
-        setDirectories(completedData.directories.children);
-      },
-    }
-  );
+  useQuery(GET_DIRECTORIES, {
+    onCompleted: (completedData) => {
+      // console.log("completedData: ", completedData);
+      setDirectories(completedData.directories.children);
+    },
+  });
 
   const {
-    dataFiles,
-    loadingFiles,
-    errorFiles,
+    // dataFiles,
+    // loadingFiles,
+    // errorFiles,
     refetch: refetchFiles,
   } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
@@ -58,43 +62,75 @@ export default function PermanentDrawerLeft() {
     },
   });
 
-  // Use a useEffect to refetch data when selectedDirectory changes
-  useEffect(() => {
-    // console.log("selectedDirectory: ", selectedDirectory);
-    if (selectedDirectory) {
-      setShowNotification(false);
-
-      // Check the string does not contain '\\'. It will NOT be subfolders
-      // Check it has not been accepted yet
-      if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
-        setShowNotification(true);
-      } else {
-        setNodeIds([...nodeIds, nodeId]);
-      }
-
-      // Refetch the dataFiles whenever selectedDirectory changes
-      refetchFiles().then((result) => {
-        if (result.data) {
-          setSelectedFiles(result.data.getFiles);
-        }
-      });
-    }
-  }, [selectedDirectory, refetchFiles]);
+  const {
+    // dataNotification,
+    // loadingNotification,
+    // errorNotification,
+    refetch: refetchNotification,
+  } = useQuery(GET_NOTIFICATION, {
+    variables: { directory: selectedDirectory },
+    onCompleted: (completedData) => {
+      setNotification(completedData.getNotifications?.value);
+    },
+  });
 
   useEffect(() => {
     setExpanded(nodeIds);
   }, [nodeIds]);
 
-  if (loadingDirectories || loadingFiles) return "Loading...";
-  if (errorDirectories || errorFiles) {
-    // Handle any errors that occurred during the query
-    console.error(errorDirectories, errorFiles);
-    return (
-      <div>
-        {errorDirectories.message}, {errorFiles.message}
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (selectedDirectory) {
+      // console.log("selectedDirectory: ", selectedDirectory);
+
+      if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
+        // console.log("selectedDirectory2: ", selectedDirectory);
+
+        refetchNotification()
+          .then((result) => {
+            // console.log(
+            //   "result.data.getNotifications: ",
+            //   result.data.getNotification
+            // );
+            if (result.data?.getNotification) {
+              // console.log("result.data: ", result.data);
+              setNotification(result.data.getNotification.value);
+            } else {
+              setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
+            }
+          })
+          .then(() => {
+            refetchFiles().then((result) => {
+              if (result.data) {
+                // console.log("result.data: ", result.data);
+                setSelectedFiles(result.data.getFiles);
+              }
+            });
+            setLoading(false);
+          });
+      } else {
+        setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
+        refetchFiles().then((result) => {
+          if (result.data) {
+            // console.log("result.data: ", result.data);
+            setSelectedFiles(result.data.getFiles);
+          }
+          setLoading(false);
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDirectory]);
+
+  // if (loadingDirectories || loadingFiles) return "Loading...";
+  // if (errorDirectories || errorFiles) {
+  //   // Handle any errors that occurred during the query
+  //   console.error(errorDirectories, errorFiles);
+  //   return (
+  //     <div>
+  //       {errorDirectories.message}, {errorFiles.message}
+  //     </div>
+  //   );
+  // }
 
   const handleContextMenu = (event) => {
     event.preventDefault();
@@ -184,13 +220,60 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   }
 
-  function handleClick(path, nodeId) {
-    setSelectedDirectory(path);
-    setNodeId(nodeId);
+  // Works only for text files. Other will be downloaded
+  const handleDoubleClick = async (currentPath) => {
+    if (currentPath) {
+      console.log("path1: ", currentPath.path);
+      try {
+        // Encode the file path
+        // const encodedPath = encodeURIComponent(path1.path);
+        const response = await fetch("http://localhost:3001/download", {
+          method: "POST", // Use the POST method
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ pathToFile: currentPath.path }), // Pass the file path in the request body
+        });
+        if (!response.ok) {
+          throw new Error("Failed to open file in browser");
+        }
+
+        const blobResponse = await response.blob();
+        // console.log("response: ", response.blob())
+        const contentType = response.headers.get("content-type");
+        const blob = new Blob([blobResponse], { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+
+        console.log("File opened in a new browser tab");
+        handleClose();
+      } catch (error) {
+        console.error("Error opening file in browser:", error.message);
+      }
+    } else handleClose();
+  };
+
+  function handleClick(newPath, newNodeId) {
+    if (newNodeId !== nodeId && newPath !== path) {
+      setLoading(true);
+      setSelectedFiles([]);
+      setNodeId(newNodeId);
+      setSelectedDirectory(newPath);
+    } else {
+      setLoading(true);
+      refetchFiles().then((result) => {
+        if (result.data) {
+          // console.log("result.data: ", result.data);
+          setSelectedFiles(result.data.getFiles);
+        }
+        setLoading(false);
+      });
+    }
   }
 
   function acceptNotification() {
-    setShowNotification(false);
+    // setShowNotification(false);
+    setNotification(false);
     setNodeIds([...nodeIds, nodeId]);
   }
 
@@ -233,6 +316,7 @@ export default function PermanentDrawerLeft() {
           .map((node) => renderItem(null, node))
       : null;
   // console.log("styles:", styles);
+
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
@@ -265,17 +349,28 @@ export default function PermanentDrawerLeft() {
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
         <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
-          {selectedFiles ? (
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+              }}
+            >
+              <CircularProgress />
+            </div>
+          ) : selectedFiles ? (
             notification ? (
               <div>
-                <Grid
-                  container
-                  justifyContent="center"
-                  alignItems="center"
-                  direction="column"
-                >
-                  Do you agree?
-                  <Stack direction="row" spacing={2}>
+                <Grid container direction="column">
+                  <Typography
+                    variant="body1"
+                    style={{ whiteSpace: "pre-wrap", padding: "16px" }}
+                  >
+                    <span className="view ql-editor" dangerouslySetInnerHTML={sanitizeHTML(notification)} />
+                  </Typography>
+                  <Stack direction="row" spacing={2} justifyContent="center">
                     <Button
                       onClick={acceptNotification}
                       variant="contained"
@@ -299,13 +394,23 @@ export default function PermanentDrawerLeft() {
                 style={{ cursor: "context-menu" }}
               >
                 <DataGrid
+                  slotProps={{
+                    pagination: {
+                      labelRowsPerPage: "Files per page",
+                    },
+                  }}
                   getRowId={(row) => row.path}
                   columns={[
-                    { field: "name", headerName: "Name" },
-                    { field: "size", headerName: "Size" },
-                    { field: "ctime", headerName: "Date" },
+                    { field: "name", headerName: "Name", width: 200 },
+                    { field: "size", headerName: "Size", width: 100 },
+                    { field: "ctime", headerName: "Date", width: 100 },
                   ]}
                   rows={selectedFiles}
+                  onRowDoubleClick={(params) => {
+                    const selectedFile = params.row;
+                    handleDoubleClick(selectedFile);
+                    // console.log(`Opening file: ${selectedFile.name}`);
+                  }}
                 />
                 <Menu
                   open={contextMenu !== null}
