@@ -6,22 +6,27 @@ export const GET_DIRECTORIES = gql`
       name
       path
       type
+      relativePath
       children {
         name
         path
         type
+        relativePath
         children {
           name
           path
           type
+          relativePath
           children {
             name
             path
             type
+            relativePath
             children {
               name
               path
               type
+              relativePath
             }
           }
         }

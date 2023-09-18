@@ -29,25 +29,75 @@ const resolvers = {
       const directoryParam = await AdminParams.findOne({
         name: paramNamePathToRootDir,
       });
-      // console.log(directoryfromDB);
+      // console.log(directoryParam);
       if (directoryParam) {
-        // console.log("directoryfromDB.value: ", directoryfromDB.value);
+        // console.log("directoryfromDB.value: ", directoryParam.value);
         const directories = directoryTree(directoryParam.value);
-        // console.log("directories: ", directories);
+        // console.log("directories.children: ", directories.children);
         return directories;
       } else {
         return null;
       }
     },
-    files: (parent, { directory }, context) => {
-      console.log("files_Query: directory: ", directory);
+    files: async (parent, { directory }, context) => {
+      console.log("directory in getFiles resolver : ", directory);
+      // In this case, we'll pretend there is no data when
+      // we're not logged in. Another option would be to
+      // throw an error.
+      if (!context.user) return null;
 
-      if (typeof directory !== "string") {
-        throw new Error('The "directory" argument must be a string.');
+      // if (typeof directory !== "string") {
+      //   throw new Error('The "directory" argument must be a string.');
+      // }
+
+      const paramNamePathToRootDir = "path-to-root-directory";
+      const directoryParam = await AdminParams.findOne({
+        name: paramNamePathToRootDir,
+      });
+
+      if (directoryParam) {
+        let fullPathToDirectory = directoryParam.value
+
+        if (directory) {
+
+          console.log("directory: ", directory);
+          fullPathToDirectory = fullPathToDirectory + "\\\\" + directory;
+        }  
+
+        // console.log("directory: ", directory);
+        // const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
+        // console.log("fullPathToDirectory: ", fullPathToDirectory);
+        const files = getFilesFromSelectedDirectory(directoryParam.value, fullPathToDirectory, directory);
+        // console.log("files: ", files);
+        return files.children;
+      } else {
+        return null;
       }
-      const files = getFilesFromSelectedDirectory(directory);
-      return files;
     },
+
+    // files: async (parent, { directory }, context) => {
+    //   console.log("files_Query: directory: ", directory);
+    //   const paramNamePathToRootDir = "path-to-root-directory";
+    //   const directoryParam = await AdminParams.findOne({
+    //     name: paramNamePathToRootDir,
+    //   });
+    //   // console.log(directoryfromDB);
+    //   if (directoryParam) {
+    //     // console.log("directoryfromDB.value: ", directoryfromDB.value);
+    //     if (typeof directory !== "string") {
+    //       throw new Error('The "directory" argument must be a string.');
+    //     }
+
+    //     const path = directoryParam.value + directory;
+
+    //     // console.log("directories: ", directories);
+    //     const files = getFilesFromSelectedDirectory(path);
+    //     console.log("files: ", files);
+    //     return files;
+    //   } else {
+    //     return null;
+    //   }
+    // },
     users: async () => {
       try {
         const users = await User.find();
@@ -56,33 +106,7 @@ const resolvers = {
         throw new Error("Error fetching users");
       }
     },
-    getFiles: async (parent, { directory }, context) => {
-      // console.log("context.user in getFiles resolver: ", contextValue.user);
-      // In this case, we'll pretend there is no data when
-      // we're not logged in. Another option would be to
-      // throw an error.
-      if (!context.user) return null;
 
-      if (typeof directory !== "string") {
-        throw new Error('The "directory" argument must be a string.');
-      }
-
-      if (directory.length !== 0) {
-        const paramNamePathToRootDir = "path-to-root-directory";
-        const directoryParam = await AdminParams.findOne({
-          name: paramNamePathToRootDir,
-        });
-        if (directoryParam) {
-          // console.log("directory: ", directory);
-          const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
-          // console.log("fullDirectory: ", fullDirectory);
-          const files = getFilesFromSelectedDirectory(fullPathToDirectory);
-          return files;
-        } else {
-          return null;
-        }
-      } else return null;
-    },
     currentUser(root, args, context) {
       return context.user;
     },
@@ -104,12 +128,12 @@ const resolvers = {
       }
     },
     getNotification: async (parent, { directory }, context) => {
-      console.log("directory: ", directory);
-      if (typeof directory !== "string") {
-        throw new Error('The "directory" argument must be a string.');
-      }
+      // console.log("directory: ", directory);
+      // if (typeof directory !== "string") {
+      //   throw new Error('The "directory" argument must be a string.');
+      // }
 
-      if (directory.length !== 0) {
+      if (directory?.length !== 0) {
         const value = await Notification.findOne({
           directory,
         });

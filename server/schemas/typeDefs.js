@@ -8,6 +8,7 @@ const typeDefs = `#graphql
     path: String
     name: String
     type: String
+    relativePath: String
     children: [Directory]
   }
 
@@ -15,7 +16,9 @@ const typeDefs = `#graphql
     name: String
     size: String
     ctime: String
+    type: String
     path: String
+    relativePath: String
   }
 
   type User {
@@ -43,7 +46,6 @@ const typeDefs = `#graphql
     directories: Directory @auth
     files(directory: String): [File]
     users: [User]
-    getFiles(directory: String): [File] @auth
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
     getNotification(directory: String): Notification

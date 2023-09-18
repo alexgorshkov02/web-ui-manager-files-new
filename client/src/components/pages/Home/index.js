@@ -43,7 +43,10 @@ export default function PermanentDrawerLeft() {
 
   useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
-      // console.log("completedData: ", completedData);
+      console.log(
+        "completedData.directories.children: ",
+        completedData.directories
+      );
       setDirectories(completedData.directories.children);
     },
   });
@@ -56,8 +59,9 @@ export default function PermanentDrawerLeft() {
   } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
-      if (completedData.getFiles) {
-        setSelectedFiles(completedData.getFiles);
+      if (completedData) {
+        console.log("completedData..children: ", completedData);
+        setSelectedFiles(completedData.files);
       }
     },
   });
@@ -80,10 +84,10 @@ export default function PermanentDrawerLeft() {
 
   useEffect(() => {
     if (selectedDirectory) {
-      // console.log("selectedDirectory: ", selectedDirectory);
+      console.log("selectedDirectory: ", selectedDirectory);
 
       if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
-        // console.log("selectedDirectory2: ", selectedDirectory);
+        console.log("selectedDirectory2: ", selectedDirectory);
 
         refetchNotification()
           .then((result) => {
@@ -102,20 +106,21 @@ export default function PermanentDrawerLeft() {
             refetchFiles().then((result) => {
               if (result.data) {
                 // console.log("result.data: ", result.data);
-                setSelectedFiles(result.data.getFiles);
+                setSelectedFiles(result.data.files);
               }
             });
-            setLoading(false);
-          });
+          })
+          .then(() => setLoading(false));
       } else {
         setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
-        refetchFiles().then((result) => {
-          if (result.data) {
-            // console.log("result.data: ", result.data);
-            setSelectedFiles(result.data.getFiles);
-          }
-          setLoading(false);
-        });
+        refetchFiles()
+          .then((result) => {
+            if (result.data) {
+              // console.log("result.data: ", result.data);
+              setSelectedFiles(result.data.files);
+            }
+          })
+          .then(() => setLoading(false));
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,21 +258,106 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   };
 
-  function handleClick(newPath, newNodeId) {
-    if (newNodeId !== nodeId && newPath !== path) {
+  async function handleClick(relativePath) {
+    console.log("nodeId: ", nodeId);
+    console.log("relativePath: ", relativePath);
+    if (relativePath !== nodeId) {
       setLoading(true);
       setSelectedFiles([]);
-      setNodeId(newNodeId);
-      setSelectedDirectory(newPath);
+      console.log("relativePath: ", relativePath);
+      setNodeId(relativePath);
+      setSelectedDirectory(relativePath);
     } else {
       setLoading(true);
-      refetchFiles().then((result) => {
-        if (result.data) {
-          // console.log("result.data: ", result.data);
-          setSelectedFiles(result.data.getFiles);
+      setSelectedFiles([]);
+      refetchFiles()
+        .then((result) => {
+          if (result.data) {
+            console.log("result.data: ", result.data);
+            setSelectedFiles(result.data.files);
+          }
+          setLoading(false);
+        })
+        .then(() => setLoading(false));
+    }
+  }
+
+  async function handleRowClick(typename, relativePath, name, path) {
+    console.log("relativePath: ", relativePath);
+    console.log("name: ", name);
+    if (typename === "directory") {
+      if (relativePath !== nodeId) {
+        setLoading(true);
+        setSelectedFiles([]);
+        console.log("relativePath: ", relativePath);
+        setNodeId(relativePath);
+        setSelectedDirectory(relativePath);
+      } else {
+        setLoading(true);
+        setSelectedFiles([]);
+        refetchFiles()
+          .then((result) => {
+            if (result.data) {
+              console.log("result.data: ", result.data);
+              setSelectedFiles(result.data.files);
+            }
+            setLoading(false);
+          })
+          .then(() => setLoading(false));
+      }
+    } else if (typename === "file") {
+      try {
+        const response = await fetch("http://localhost:3001/download", {
+          method: "POST", // Use the POST method
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ pathToFile: path }), // Pass the file path in the request body
+        });
+        if (!response.ok) {
+          throw new Error("Failed to open file in browser");
         }
-        setLoading(false);
-      });
+
+
+
+        const blobResponse = await response.blob();
+        // console.log("response: ", response.blob())
+        const contentType = response.headers.get("content-type");
+        const blob = new Blob([blobResponse], { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+        
+
+        if (contentType && contentType.startsWith("text/")) {
+          window.open(blobUrl, "_blank");
+          console.log("File downloaded successfully");
+          handleClose();
+        } else {
+          const delimiter = "\\"; // Delimiter used to split the string
+          const lastDelimiterIndex = path.lastIndexOf(delimiter);
+          let fileName;
+          if (lastDelimiterIndex !== -1) {
+            fileName = path.substring(lastDelimiterIndex + 1);
+            console.log("fileName", fileName);
+          } else {
+            console.log("Delimiter not found in the string");
+          }
+const a = document.createElement("a");
+        a.href = blobUrl;
+          a.download = fileName;
+
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+          console.log("File opened in a new browser tab");
+        }
+
+
+        handleClose();
+      } catch (error) {
+        console.error("Error opening file in browser:", error.message);
+      }
+    } else {
+      console.log("Typename is unexpected. Typename: ", typename);
     }
   }
 
@@ -279,6 +369,7 @@ export default function PermanentDrawerLeft() {
 
   function declineNotification() {
     setSelectedFiles(false);
+    setNotification(false);
   }
 
   //TODO: Check if it is possible to get rid of "node.path". After moving the root directory to the DB, it seems that "node.path" is equal to "node.name".
@@ -289,14 +380,9 @@ export default function PermanentDrawerLeft() {
     // console.log("node.name: ", node);
     return (
       <TreeItem
-        onClick={() =>
-          handleClick(
-            parentName !== null ? parentName + "\\\\" + node.path : node.path,
-            parentName !== null ? parentName + node.path : node.path
-          )
-        }
+        onClick={() => handleClick(node.relativePath)}
         key={node.name}
-        nodeId={parentName !== null ? parentName + node.path : node.path}
+        nodeId={node.relativePath}
         label={node.name}
       >
         {Array.isArray(node.children)
@@ -368,7 +454,10 @@ export default function PermanentDrawerLeft() {
                     variant="body1"
                     style={{ whiteSpace: "pre-wrap", padding: "16px" }}
                   >
-                    <span className="view ql-editor" dangerouslySetInnerHTML={sanitizeHTML(notification)} />
+                    <span
+                      className="view ql-editor"
+                      dangerouslySetInnerHTML={sanitizeHTML(notification)}
+                    />
                   </Typography>
                   <Stack direction="row" spacing={2} justifyContent="center">
                     <Button
@@ -399,18 +488,25 @@ export default function PermanentDrawerLeft() {
                       labelRowsPerPage: "Files per page",
                     },
                   }}
-                  getRowId={(row) => row.path}
+                  getRowId={(row) => row.name}
                   columns={[
                     { field: "name", headerName: "Name", width: 200 },
                     { field: "size", headerName: "Size", width: 100 },
                     { field: "ctime", headerName: "Date", width: 100 },
                   ]}
                   rows={selectedFiles}
-                  onRowDoubleClick={(params) => {
-                    const selectedFile = params.row;
-                    handleDoubleClick(selectedFile);
-                    // console.log(`Opening file: ${selectedFile.name}`);
+                  onRowClick={(params) => {
+                    const typename = params.row.type;
+                    const relativePath = params.row.relativePath;
+                    const name = params.row.name;
+                    const path = params.row.path;
+                    handleRowClick(typename, relativePath, name, path);
                   }}
+                  // onRowDoubleClick={(params) => {
+                  //   const selectedFile = params.row;
+                  //   handleDoubleClick(selectedFile);
+                  //   // console.log(`Opening file: ${selectedFile.name}`);
+                  // }}
                 />
                 <Menu
                   open={contextMenu !== null}
@@ -427,7 +523,16 @@ export default function PermanentDrawerLeft() {
               </div>
             )
           ) : (
-            <div>Select a folder</div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+              }}
+            >
+              <CircularProgress />
+            </div>
           )}
         </div>
       </Box>
