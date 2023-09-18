@@ -16,17 +16,19 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 // import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
+import Alert from "@mui/material/Alert";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { useQuery } from "@apollo/client";
 import { GET_NOTIFICATIONS } from "../../../apollo/queries/getNotifications";
 import {
-  useSetNotification,
+  useAddNotification,
+  useUpdateNotification,
   useDeleteNotification,
 } from "../../../apollo/mutations";
+import Fade from "@mui/material/Fade";
 
-//TODO: Add checking for the mandatory fields: directory and value. Show an error if they are missed
-//TODO: Show an error in UI if a user tries to add an existed directory
+//TODO: "<" will be shown  &lt;. Check othe special symbols later
 
 const dialogStyles = {
   maxWidth: "80vw",
@@ -58,7 +60,7 @@ const headerStyle = {
   fontWeight: "bold",
 };
 
-// Define a CSS class for the hover effect
+// Hover effect
 const hoverClass = {
   "&:hover": {
     backgroundColor: "#f0f0f0",
@@ -71,11 +73,16 @@ export default function Dashboard() {
   const [id, setId] = useState("");
   const [customer, setCustomer] = useState("");
   const [directory, setDirectory] = useState("");
+  const [disabledDirectory, setDisabledDirectory] = useState(false);
   const [value, setValue] = useState("");
   const handleValueChange = (value) => {
     setValue(value);
   };
   const dialogRef = createRef();
+  const [error, setError] = useState(false);
+  const [errorDirectory, setErrorDirectory] = useState(false);
+  const [errorValue, setErrorValue] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { refetch: refetchNotifications } = useQuery(GET_NOTIFICATIONS, {
     onCompleted: (completedData) => {
@@ -83,7 +90,8 @@ export default function Dashboard() {
     },
   });
 
-  const [addOrUpdateNotification] = useSetNotification();
+  const [addNotification] = useAddNotification();
+  const [updateNotification] = useUpdateNotification();
   const [deleteNotification] = useDeleteNotification();
 
   useEffect(() => {
@@ -104,32 +112,71 @@ export default function Dashboard() {
   }, [open]);
 
   const handleCloseClick = () => {
+    setError(false);
     setOpen(false);
   };
 
   const handleAddNotificationClick = () => {
+    setDisabledDirectory(false);
     setOpen(true);
   };
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
+    // console.log("handleSaveClick function called");
     // console.log("id: ", id);
     // console.log("customer: ", customer);
     // console.log("directory: ", directory);
     // console.log("value: ", value);
-    try {
-      addOrUpdateNotification({
-        variables: {
-          id: id,
-          customer: customer,
-          directory: directory,
-          value: value,
-        },
-      });
-    } catch (error) {
-      console.error("Error while saving a notification: ", error);
+    const valueWithoutHTMLtags = removeHtmlTags(value);
+    // console.log("valueWithoutHTMLtags: ", valueWithoutHTMLtags);
+    if (!directory || !valueWithoutHTMLtags) {
+      setError(true);
+
+      if (!directory && !valueWithoutHTMLtags) {
+        setErrorDirectory(true);
+        setErrorValue(true);
+        setErrorMessage(
+          "Folder name and notification text are required fields"
+        );
+      } else if (!directory) {
+        setErrorDirectory(true);
+        setErrorMessage("Folder name is required field");
+      } else if (!valueWithoutHTMLtags) {
+        setErrorValue(true);
+        setErrorMessage("Notification text is required field");
+      } else {
+        setErrorMessage(
+          "Error while saving a notification. Please contact an administrator"
+        );
+      }
+      return null;
     }
 
-    handleCloseClick();
+    try {
+      if (id) {
+        await updateNotification({
+          variables: {
+            id: id,
+            customer: customer,
+            directory: directory,
+            value: value,
+          },
+        });
+      } else {
+        await addNotification({
+          variables: {
+            customer: customer,
+            directory: directory,
+            value: value,
+          },
+        });
+      }
+      handleCloseClick();
+    } catch (error) {
+      // console.error("Error while saving a notification: ", error);
+      setError(true);
+      setErrorMessage(error.message);
+    }
   };
 
   const handleDeleteNotificationClick = (id) => {
@@ -155,6 +202,7 @@ export default function Dashboard() {
     if (!customer) customer = "";
     setCustomer(customer);
     setDirectory(directory);
+    setDisabledDirectory(true);
     setValue(value);
     setOpen(true);
   };
@@ -333,11 +381,13 @@ export default function Dashboard() {
           />
 
           <TextField
+            disabled={disabledDirectory}
             label="Folder Name"
             fullWidth
             variant="outlined"
             value={directory}
             onChange={(e) => setDirectory(e.target.value)}
+            error={errorDirectory}
             sx={{
               marginTop: "10px",
             }}
@@ -346,7 +396,10 @@ export default function Dashboard() {
           <ReactQuill
             value={value}
             onChange={handleValueChange}
-            style={{ marginTop: "10px" }}
+            style={{
+              marginTop: "10px",
+              border: errorValue ? "1px solid red" : "",
+            }}
             modules={{
               toolbar: [
                 [{ header: "1" }, { header: "2" }],
@@ -371,6 +424,22 @@ export default function Dashboard() {
             ]}
           />
         </DialogContent>
+        {error && (
+          <Fade
+            in={error} //Write the needed condition here to make it appear
+            timeout={{ enter: 1000, exit: 4000 }} //Edit these two values to change the duration of transition when the element is getting appeared and disappeard
+            addEndListener={() => {
+              setTimeout(() => {
+                setError(false);
+                setErrorDirectory(false);
+                setErrorValue(false);
+                //       setErrorMessage("");
+              }, 5000);
+            }}
+          >
+            <Alert severity="error">{errorMessage}</Alert>
+          </Fade>
+        )}
         <DialogActions>
           <Button onClick={handleSaveClick} color="primary" variant="contained">
             Save

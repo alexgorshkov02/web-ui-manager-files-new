@@ -167,30 +167,49 @@ const resolvers = {
       return null;
     },
 
-    addOrUpdateNotification: async (
+    addNotification: async (
+      parent,
+      { customer, directory, value },
+      context
+    ) => {
+      const existingDirectory = await Notification.findOne({ directory });
+      console.log("existingDirectory: ", existingDirectory);
+
+      if (!existingDirectory) {
+        await Notification.create({ customer, directory, value });
+      } else {
+        console.log("Found duplicate directory. Change the existing directory");
+        const message =
+          "Duplicate folder has been found. Please change a notification for the existing folder";
+        throw new Error(message, {
+          extensions: { code: "DUPLICATE_ENTITY" },
+        });
+      }
+
+      return null;
+    },
+
+    updateNotification: async (
       parent,
       { id, customer, directory, value },
       context
     ) => {
-      if (id) {
-        const existingDirectory = await Notification.findOne({ _id: id });
-        // console.log("existingDirectory: ", existingDirectory);
-        if (existingDirectory) {
-          if (existingDirectory._id !== id) {
-            await Notification.updateOne(
-              { _id: id },
-              { $set: { customer, directory, value } }
-            );
-          } else {
-            console.log(
-              "Found duplicate directory. Change the existing directory"
-            );
-          }
-        }
+      const existingNotification = await Notification.findOne({ _id: id });
+      console.log("existingNotification: ", existingNotification);
+
+      if (existingNotification) {
+        await Notification.updateOne(
+          { _id: id },
+          { $set: { customer, directory, value } }
+        );
       } else {
-        // console.log("directory: ", directory, "value: ", value);
-        await Notification.create({ customer, directory, value });
+        console.log("Notification has not been found");
+        const message = "Notification has not been found. It was not updated";
+        throw new Error(message, {
+          extensions: { code: "NO_ENTITY_FOUND" },
+        });
       }
+
       return null;
     },
 
