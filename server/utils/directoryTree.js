@@ -1,7 +1,6 @@
 const PATH = require("path");
 const dirTree = require("directory-tree");
 const fs = require('fs');
-const http = require('http'); 
 
 //For testing (temp)
 // const path = "C:\\testFolder\\";
@@ -16,48 +15,46 @@ function directoryTree(path) {
     // console.log(stats);
   });
   // console.log("tree: ", tree);
-  // addFieldToTree(tree, fieldName, currentPath);
-  // console.log("tree: ", tree);
-  // console.log(tree.children[0]);
   return tree;
 }
 
 
-function addFieldToTree(tree, fieldName, fieldValue) {
-  // Add the field to the file node
-  // console.log("fieldValue: ",fieldValue)
-  tree[fieldName] = fieldValue;
-  
-  // Recursively process child nodes (if any)
-  if (tree.children && tree.children.length > 0) {
-    for (const child of tree.children) {
-      addFieldToTree(child, fieldName, fieldValue);
+function getFilesFromSelectedDirectory(rootDir, dirPath) {
+  console.log(rootDir, dirPath);
+  const items = fs.readdirSync(dirPath);
+
+  const tree = {
+    name: PATH.basename(dirPath),
+    relativePath: PATH.relative(rootDir, dirPath),
+    size: 0, // Initialize the size as 0 for directories
+    type: 'directory',
+    ctime: null, // You can modify this to include creation time for directories
+    children: [],
+  };
+
+  for (const item of items) {
+    const itemPath = PATH.join(dirPath, item);
+    const itemStats = fs.statSync(itemPath);
+
+    const itemInfo = {
+      name: item,
+      relativePath: PATH.relative(rootDir, itemPath),
+      size: itemStats.size,
+      type: itemStats.isFile() ? 'file' : 'directory',
+      ctime: itemStats.ctime,
+    };
+
+    if (itemStats.isDirectory()) {
+      itemInfo.children = getFilesFromSelectedDirectory(rootDir, itemPath);
     }
+
+    tree.children.push(itemInfo);
   }
-}
 
-
-function getFilesFromSelectedDirectory(rootDir, path, directory) {
-  console.log("rootDir,path, directory: ", rootDir,path, directory)
-  // let listOfFiles = [];
-  const tree = dirTree(path, {attributes:["size", "type", "ctime"]}, null, (item, currentPath) => {
-    item.path = PATH.basename(currentPath);
-    item.relativePath = PATH.relative(rootDir, currentPath);
-    // console.log("Item: ", item);
-    // listOfFiles.push(item);
-  });
-  // const fieldName = "relativePath";
-  // addFieldToTree(tree, fieldName, directory);
-
-  // console.log("Modified tree: ", tree);
+  console.log("tree: ", tree);
   return tree;
-
-
-
-  // console.log("tree: ", tree);
-  // console.log(tree.children[0]);
-  // return tree;
 }
+
 
 //For testing (temp)
 // const tree = directoryTree(path);

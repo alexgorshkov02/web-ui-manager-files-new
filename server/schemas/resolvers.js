@@ -69,7 +69,7 @@ const resolvers = {
         // console.log("fullPathToDirectory: ", fullPathToDirectory);
         const files = getFilesFromSelectedDirectory(directoryParam.value, fullPathToDirectory, directory);
         // console.log("files: ", files);
-        return files.children;
+        return files;
       } else {
         return null;
       }

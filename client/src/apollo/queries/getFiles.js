@@ -9,6 +9,14 @@ export const GET_FILES = gql`
       type
       path
       relativePath
+      children {
+        name
+        size
+        ctime
+        type
+        path
+        relativePath
+      }
     }
   }
 `;

@@ -22,16 +22,44 @@ import { GET_FILES } from "../../../apollo/queries/getFiles";
 import { Grid, Button, Stack } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import "react-quill/dist/quill.snow.css";
+import Alert from "@mui/material/Alert";
+import Fade from "@mui/material/Fade";
 
 //Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
+
+function Breadcrumb({ pathSegments, onClick, onHomeClick }) {
+  return (
+    <div>
+      <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
+        {pathSegments.length === 0 ? "Home" : "Home\\"}
+      </span>
+      {pathSegments.map((segment, index) => (
+        <span key={index} onClick={onClick} style={{ cursor: "pointer" }}>
+          {segment}
+          {index < pathSegments.length - 1 && <span>{"\\"}</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function PermanentDrawerLeft() {
   const [selectedDirectory, setSelectedDirectory] = useState("");
   const [directories, setDirectories] = useState();
   const [nodeId, setNodeId] = useState();
   const [nodeIds, setNodeIds] = useState([]);
-  const [path, setPath] = useState(null);
+  const [fileName, setFileName] = useState();
+
+  const [pathSegments, setPathSegments] = useState([]);
+  const handlePathChange = (path) => {
+    console.log("path: ", path);
+    const parts = path?.split("\\");
+    console.log("parts: ", parts);
+    setPathSegments(parts);
+    console.log("path: ", { path });
+  };
+
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
   const [notification, setNotification] = useState();
@@ -40,6 +68,9 @@ export default function PermanentDrawerLeft() {
   const sanitizeHTML = (html) => {
     return { __html: html };
   };
+
+  const [infoMessage, setInfoMessage] = useState(false);
+  const [infoMessageValue, setInfoMessageValue] = useState(false);
 
   useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
@@ -59,9 +90,9 @@ export default function PermanentDrawerLeft() {
   } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
-      if (completedData) {
-        console.log("completedData..children: ", completedData);
-        setSelectedFiles(completedData.files);
+      if (completedData.files) {
+        console.log("completedData.files ", completedData.files.name);
+        setSelectedFiles(completedData.files.children);
       }
     },
   });
@@ -83,6 +114,11 @@ export default function PermanentDrawerLeft() {
   }, [nodeIds]);
 
   useEffect(() => {
+    if (infoMessage) {
+      setInfoMessage(false);
+      setInfoMessageValue("");
+    }
+
     if (selectedDirectory) {
       console.log("selectedDirectory: ", selectedDirectory);
 
@@ -91,12 +127,7 @@ export default function PermanentDrawerLeft() {
 
         refetchNotification()
           .then((result) => {
-            // console.log(
-            //   "result.data.getNotifications: ",
-            //   result.data.getNotification
-            // );
             if (result.data?.getNotification) {
-              // console.log("result.data: ", result.data);
               setNotification(result.data.getNotification.value);
             } else {
               setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
@@ -105,8 +136,9 @@ export default function PermanentDrawerLeft() {
           .then(() => {
             refetchFiles().then((result) => {
               if (result.data) {
-                // console.log("result.data: ", result.data);
-                setSelectedFiles(result.data.files);
+                console.log("result.data: ", result.data);
+                setSelectedFiles(result.data.files.children);
+                handlePathChange(result.data.files.relativePath);
               }
             });
           })
@@ -116,8 +148,9 @@ export default function PermanentDrawerLeft() {
         refetchFiles()
           .then((result) => {
             if (result.data) {
-              // console.log("result.data: ", result.data);
-              setSelectedFiles(result.data.files);
+              console.log("result.data: ", result.data);
+              setSelectedFiles(result.data.files.children);
+              handlePathChange(result.data.files.relativePath);
             }
           })
           .then(() => setLoading(false));
@@ -137,41 +170,66 @@ export default function PermanentDrawerLeft() {
   //   );
   // }
 
-  const handleContextMenu = (event) => {
+  const handleContextMenu = async (event) => {
     event.preventDefault();
     // console.log("event1: ", event.target.parentElement.dataset.id);
     // console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
+    console.log("event1: ", event.target.parentElement.dataset.id);
+    console.log(
+      "event2: ",
+      event.target.parentElement.parentElement.dataset.id
+    );
+    // const itemType = params.row.type;
 
     //To close the menu by clicking right button if it is alreayd open
     if (contextMenu) {
       handleClose();
     }
 
-    const elementPath = event.target.parentElement.dataset.id;
-    const parentPath = event.target.parentElement.parentElement.dataset.id;
+    const element = event.target.parentElement.dataset.id;
+    const parent = event.target.parentElement.parentElement.dataset.id;
 
-    if (elementPath || parentPath) {
-      if (elementPath) {
-        setPath(elementPath);
-      } else if (parentPath) {
-        setPath(parentPath);
+    let fileName = null;
+
+    if (element || parent) {
+      if (element) {
+        fileName = element;
+      } else if (parent) {
+        fileName = parent;
       } else {
-        console.log("Error: No path!");
+        console.log("Error: No name selected!");
       }
 
-      setContextMenu(
-        contextMenu === null
-          ? {
-              mouseX: event.clientX + 2,
-              mouseY: event.clientY - 6,
-            }
-          : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
-            // Other native context menus might behave different.
-            // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
-            null
-      );
+      const fileNameArr = await fileName.split("|");
+
+      const name = fileNameArr[0];
+      const type = fileNameArr[1];
+
+      console.log("name: ", name);
+      console.log("type: ", type);
+
+      if (type === "file") {
+        setFileName(name);
+        setContextMenu(
+          contextMenu === null
+            ? {
+                mouseX: event.clientX + 2,
+                mouseY: event.clientY - 6,
+              }
+            : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+              // Other native context menus might behave different.
+              // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+              null
+        );
+      } else if (type === "directory") {
+        console.log("This is directory");
+        setInfoMessage(true);
+        setInfoMessageValue("Folders cannot be downloaded");
+      } else {
+        console.log("Type is not udentified");
+      }
     } else {
-      console.log("No path!");
+      console.log("No name!");
     }
   };
 
@@ -180,32 +238,25 @@ export default function PermanentDrawerLeft() {
   };
 
   async function handleDownload(e) {
-    // console.log("path to download: ", path)
-    if (path) {
+    console.log("e: ", e.target);
+    console.log("pathSegments: ", pathSegments);
+    console.log("fileName: ", fileName);
+    if (pathSegments && fileName) {
+      const formattedPath = pathSegments.join("\\") + "\\" + fileName;
+      console.log("formattedPath: ", formattedPath);
+
       try {
         const response = await fetch("http://localhost:3001/download", {
           method: "POST", // Use the POST method
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pathToFile: path }), // Pass the file path in the request body
+          body: JSON.stringify({ pathToFile: formattedPath }), // Pass the file path in the request body
         });
         if (!response.ok) {
           throw new Error("Failed to download file");
         }
-
-        // console.log('response:', response.headers.get('File-Name'));
-
-        // Get a file name from a selected path
-        const delimiter = "\\"; // Delimiter used to split the string
-        const lastDelimiterIndex = path.lastIndexOf(delimiter);
-        let fileName;
-        if (lastDelimiterIndex !== -1) {
-          fileName = path.substring(lastDelimiterIndex + 1);
-          console.log("fileName", fileName);
-        } else {
-          console.log("Delimiter not found in the string");
-        }
+        console.log("response:", response.headers.get("File-Name"));
 
         // Trigger the file download using the Blob and anchor approach
         const blob = await response.blob();
@@ -225,39 +276,6 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   }
 
-  // Works only for text files. Other will be downloaded
-  const handleDoubleClick = async (currentPath) => {
-    if (currentPath) {
-      console.log("path1: ", currentPath.path);
-      try {
-        // Encode the file path
-        // const encodedPath = encodeURIComponent(path1.path);
-        const response = await fetch("http://localhost:3001/download", {
-          method: "POST", // Use the POST method
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ pathToFile: currentPath.path }), // Pass the file path in the request body
-        });
-        if (!response.ok) {
-          throw new Error("Failed to open file in browser");
-        }
-
-        const blobResponse = await response.blob();
-        // console.log("response: ", response.blob())
-        const contentType = response.headers.get("content-type");
-        const blob = new Blob([blobResponse], { type: contentType });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, "_blank");
-
-        console.log("File opened in a new browser tab");
-        handleClose();
-      } catch (error) {
-        console.error("Error opening file in browser:", error.message);
-      }
-    } else handleClose();
-  };
-
   async function handleClick(relativePath) {
     console.log("nodeId: ", nodeId);
     console.log("relativePath: ", relativePath);
@@ -274,15 +292,15 @@ export default function PermanentDrawerLeft() {
         .then((result) => {
           if (result.data) {
             console.log("result.data: ", result.data);
-            setSelectedFiles(result.data.files);
+            setSelectedFiles(result.data.files.children);
+            handlePathChange(result.data.files.relativePath);
           }
-          setLoading(false);
         })
         .then(() => setLoading(false));
     }
   }
 
-  async function handleRowClick(typename, relativePath, name, path) {
+  async function handleRowClick(typename, relativePath, name) {
     console.log("relativePath: ", relativePath);
     console.log("name: ", name);
     if (typename === "directory") {
@@ -299,9 +317,9 @@ export default function PermanentDrawerLeft() {
           .then((result) => {
             if (result.data) {
               console.log("result.data: ", result.data);
-              setSelectedFiles(result.data.files);
+              setSelectedFiles(result.data.files.children);
+              handlePathChange(result.data.files.relativePath);
             }
-            setLoading(false);
           })
           .then(() => setLoading(false));
       }
@@ -312,45 +330,42 @@ export default function PermanentDrawerLeft() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pathToFile: path }), // Pass the file path in the request body
+          body: JSON.stringify({ pathToFile: relativePath }), // Pass the file path in the request body
         });
         if (!response.ok) {
           throw new Error("Failed to open file in browser");
         }
-
-
 
         const blobResponse = await response.blob();
         // console.log("response: ", response.blob())
         const contentType = response.headers.get("content-type");
         const blob = new Blob([blobResponse], { type: contentType });
         const blobUrl = URL.createObjectURL(blob);
-        
 
         if (contentType && contentType.startsWith("text/")) {
           window.open(blobUrl, "_blank");
           console.log("File downloaded successfully");
           handleClose();
         } else {
+          console.log("relativePath: ", relativePath);
           const delimiter = "\\"; // Delimiter used to split the string
-          const lastDelimiterIndex = path.lastIndexOf(delimiter);
+          const lastDelimiterIndex = relativePath.lastIndexOf(delimiter);
           let fileName;
           if (lastDelimiterIndex !== -1) {
-            fileName = path.substring(lastDelimiterIndex + 1);
+            fileName = relativePath.substring(lastDelimiterIndex + 1);
             console.log("fileName", fileName);
           } else {
             console.log("Delimiter not found in the string");
           }
-const a = document.createElement("a");
-        a.href = blobUrl;
+          const a = document.createElement("a");
+          a.href = blobUrl;
           a.download = fileName;
 
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
           console.log("File opened in a new browser tab");
         }
-
 
         handleClose();
       } catch (error) {
@@ -361,19 +376,48 @@ const a = document.createElement("a");
     }
   }
 
+  const handleHomeClick = () => {
+    setPathSegments([]);
+    setNodeId();
+    setSelectedDirectory("");
+  };
+
+  function handleClickPath(event) {
+    console.log("Clicked on breadcrumb segment"); // Add this line
+    // Get the text content of the clicked element (span)
+    let clickedWord = event.target.textContent;
+    console.log("clickedWord:", clickedWord);
+    if (clickedWord.endsWith("\\")) {
+      clickedWord = clickedWord.slice(0, -1);
+    }
+    console.log("clickedWord:", clickedWord);
+    // Get the index of the clicked word in the pathSegments array
+    const index = pathSegments.indexOf(clickedWord);
+    console.log("index:", index);
+    if (index !== -1) {
+      const clickedPath = pathSegments.slice(0, index + 1).join("\\");
+      console.log("clickedPath3:", clickedPath);
+      // Update the path state with the clicked path
+      // setPath(clickedPath);
+      setSelectedDirectory(clickedPath);
+    }
+  }
+
   function acceptNotification() {
     // setShowNotification(false);
     setNotification(false);
+    console.log("nodeId: ", nodeId);
     setNodeIds([...nodeIds, nodeId]);
   }
 
   function declineNotification() {
-    setSelectedFiles(false);
+    setSelectedDirectory("");
+    // setSelectedFiles(false);
+    setPathSegments([]);
     setNotification(false);
   }
 
-  //TODO: Check if it is possible to get rid of "node.path". After moving the root directory to the DB, it seems that "node.path" is equal to "node.name".
-  const renderItem = (parentName, node) => {
+  const renderItem = (node) => {
     // console.log("parentName: ", parentName);
     // console.log("Type: ", node);
     // console.log("parentName: ", parentName + " + node.path: " + node.path);
@@ -388,7 +432,7 @@ const a = document.createElement("a");
         {Array.isArray(node.children)
           ? node.children
               .filter((child) => child.type === "directory")
-              .map((child) => renderItem(node.name, child))
+              .map((child) => renderItem(child))
           : null}
       </TreeItem>
     );
@@ -399,9 +443,8 @@ const a = document.createElement("a");
     Array.isArray(nodes)
       ? nodes
           .filter((node) => node.type === "directory")
-          .map((node) => renderItem(null, node))
+          .map((node) => renderItem(node))
       : null;
-  // console.log("styles:", styles);
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -418,7 +461,13 @@ const a = document.createElement("a");
         variant="permanent"
         anchor="left"
       >
-        <Toolbar />
+        <Toolbar>
+          <Breadcrumb
+            pathSegments={pathSegments}
+            onClick={handleClickPath}
+            onHomeClick={handleHomeClick}
+          />
+        </Toolbar>
         <Divider />
         <List>
           <TreeView
@@ -478,48 +527,61 @@ const a = document.createElement("a");
                 </Grid>
               </div>
             ) : (
-              <div
-                onContextMenu={handleContextMenu}
-                style={{ cursor: "context-menu" }}
-              >
-                <DataGrid
-                  slotProps={{
-                    pagination: {
-                      labelRowsPerPage: "Files per page",
-                    },
-                  }}
-                  getRowId={(row) => row.name}
-                  columns={[
-                    { field: "name", headerName: "Name", width: 200 },
-                    { field: "size", headerName: "Size", width: 100 },
-                    { field: "ctime", headerName: "Date", width: 100 },
-                  ]}
-                  rows={selectedFiles}
-                  onRowClick={(params) => {
-                    const typename = params.row.type;
-                    const relativePath = params.row.relativePath;
-                    const name = params.row.name;
-                    const path = params.row.path;
-                    handleRowClick(typename, relativePath, name, path);
-                  }}
-                  // onRowDoubleClick={(params) => {
-                  //   const selectedFile = params.row;
-                  //   handleDoubleClick(selectedFile);
-                  //   // console.log(`Opening file: ${selectedFile.name}`);
-                  // }}
-                />
-                <Menu
-                  open={contextMenu !== null}
-                  onClose={handleClose}
-                  anchorReference="anchorPosition"
-                  anchorPosition={
-                    contextMenu !== null
-                      ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                      : undefined
-                  }
+              <div>
+                {infoMessage && (
+                  <Fade
+                    in={infoMessage} //Write the needed condition here to make it appear
+                    timeout={{ enter: 1000, exit: 4000 }} //Edit these two values to change the duration of transition when the element is getting appeared and disappeard
+                    addEndListener={() => {
+                      setTimeout(() => {
+                        setInfoMessage(false);
+                        setInfoMessageValue("");
+                      }, 5000);
+                    }}
+                  >
+                    <Alert severity="info">{infoMessageValue}</Alert>
+                  </Fade>
+                )}
+                <div
+                  onContextMenu={(event) => handleContextMenu(event)}
+                  style={{ cursor: "context-menu" }}
                 >
-                  <MenuItem onClick={handleDownload}>Download</MenuItem>
-                </Menu>
+                  <DataGrid
+                    slotProps={{
+                      pagination: {
+                        labelRowsPerPage: "Files per page",
+                      },
+                    }}
+                    getRowId={(row) => row.name + "|" + row.type}
+                    columns={[
+                      { field: "name", headerName: "Name", width: 200 },
+                      { field: "size", headerName: "Size", width: 100 },
+                      { field: "ctime", headerName: "Date", width: 100 },
+                    ]}
+                    rows={selectedFiles}
+                    onRowClick={(params) => {
+                      const typename = params.row.type;
+                      const relativePath = params.row.relativePath;
+                      const name = params.row.name;
+                      handleRowClick(typename, relativePath, name);
+                    }}
+                  />
+
+                  <Menu
+                    open={contextMenu !== null}
+                    onClose={handleClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                      contextMenu !== null
+                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                        : undefined
+                    }
+                  >
+                    <MenuItem onClick={(e) => handleDownload(e)}>
+                      Download
+                    </MenuItem>
+                  </Menu>
+                </div>
               </div>
             )
           ) : (

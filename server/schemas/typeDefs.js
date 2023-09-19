@@ -19,6 +19,7 @@ const typeDefs = `#graphql
     type: String
     path: String
     relativePath: String
+    children: [File]
   }
 
   type User {
@@ -44,7 +45,7 @@ const typeDefs = `#graphql
   # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
     directories: Directory @auth
-    files(directory: String): [File]
+    files(directory: String): File
     users: [User]
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
@@ -59,6 +60,15 @@ const typeDefs = `#graphql
       ...allDirectories
     }
   }
+
+  # Recursive loading of subfolders
+  fragment allFiles on File {
+    name
+    children {
+      ...allFiles
+    }
+  }
+
 
   type Auth {
     token: String
