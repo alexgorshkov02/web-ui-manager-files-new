@@ -16,21 +16,28 @@ import { GET_FILES } from "../../../apollo/queries/getFiles";
 import { Grid, Button, Stack } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import "react-quill/dist/quill.snow.css";
-import Breadcrumb from "../../elements/Breadcrumb";
 import TreeViewDirectories from "../../elements/TreeViewDirectories";
 import Loading from "../../elements/Loading";
 
-//Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
 
-export default function PermanentDrawerLeft() {
+export default function PermanentDrawerLeft({
+  setPathSegments,
+  nodeId,
+  setNodeId,
+  loadingNotification,
+  setLoadingNotification,
+  checkDirectory,
+  setCheckDirectory,
+  pathSegments,
+}) {
   const [selectedDirectory, setSelectedDirectory] = useState("");
   const [directories, setDirectories] = useState();
-  const [nodeId, setNodeId] = useState("");
+
   const [nodeIds, setNodeIds] = useState([]);
   const [fileName, setFileName] = useState();
 
-  const [pathSegments, setPathSegments] = useState([]);
+  // const [pathSegments, setPathSegments] = useState([]);
   const handlePathChange = (path) => {
     const parts = path?.split("\\");
     setPathSegments(parts);
@@ -40,8 +47,6 @@ export default function PermanentDrawerLeft() {
   const [contextMenu, setContextMenu] = useState(null);
   const [notification, setNotification] = useState(null);
   const [expanded, setExpanded] = useState(["root"]);
-  const [checkDirectory, setCheckDirectory] = useState("");
-  const [loadingNotification, setLoadingNotification] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
   const sanitizeHTML = (html) => {
@@ -88,7 +93,8 @@ export default function PermanentDrawerLeft() {
       .finally(() => {
         setLoadingFiles(false);
       });
-  }, [selectedDirectory, refetchFiles]);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDirectory]);
 
   useEffect(() => {
     if (checkDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
@@ -116,7 +122,7 @@ export default function PermanentDrawerLeft() {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkDirectory, refetchNotification]);
+  }, [checkDirectory]);
 
   function handleContextMenu(event) {
     event.preventDefault();
@@ -169,14 +175,14 @@ export default function PermanentDrawerLeft() {
     } else {
       console.log("No name!");
     }
-  };
+  }
 
   const handleClose = () => {
     setContextMenu(null);
   };
 
   async function handleDownload() {
-    if (pathSegments && fileName) {
+    if (fileName) {
       const formattedPath = pathSegments.join("\\") + "\\" + fileName;
 
       try {
@@ -279,28 +285,6 @@ export default function PermanentDrawerLeft() {
     }
   }
 
-  function handlePathClick(event) {
-    // Get the text content of the clicked element (span)
-    let clickedWord = event.target.textContent;
-
-    if (clickedWord.endsWith("\\")) {
-      clickedWord = clickedWord.slice(0, -1);
-    }
-
-    // Get the index of the clicked word in the pathSegments array
-    const index = pathSegments.indexOf(clickedWord);
-
-    if (index !== -1) {
-      const clickedPath = pathSegments.slice(0, index + 1).join("\\");
-      loadFiles(clickedPath);
-    }
-  }
-
-  function handleHomeClick() {
-    setPathSegments([]);
-    loadFiles("");
-  }
-
   function acceptNotification() {
     setNotification(false);
     setNodeIds([...nodeIds, nodeId]);
@@ -312,7 +296,7 @@ export default function PermanentDrawerLeft() {
   }
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", position: "sticky" }}>
       <CssBaseline />
       <Drawer
         sx={{
@@ -326,13 +310,7 @@ export default function PermanentDrawerLeft() {
         variant="permanent"
         anchor="left"
       >
-        <Toolbar>
-          <Breadcrumb
-            pathSegments={pathSegments}
-            onClick={handlePathClick}
-            onHomeClick={handleHomeClick}
-          />
-        </Toolbar>
+        <Toolbar />
         <Divider />
         <List>
           <TreeViewDirectories
@@ -344,7 +322,6 @@ export default function PermanentDrawerLeft() {
         </List>
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
-        <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
           {loadingNotification ? (
             <Loading />
@@ -395,7 +372,7 @@ export default function PermanentDrawerLeft() {
                 columns={[
                   { field: "name", headerName: "Name", width: 200 },
                   { field: "size", headerName: "Size", width: 100 },
-                  { field: "ctime", headerName: "Date", width: 100 },
+                  { field: "ctime", headerName: "Date", width: 300 },
                 ]}
                 rows={selectedFiles}
                 onRowClick={(params) => {

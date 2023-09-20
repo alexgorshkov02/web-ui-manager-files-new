@@ -7,6 +7,7 @@ import MenuListElement from "../menu/MenuListElement";
 import { useNavigate, useLocation } from "react-router-dom";
 import { common } from "@mui/material/colors";
 import { styled } from "@mui/material/styles";
+import Breadcrumb from "../../elements/Breadcrumb";
 
 const ColorButton = styled(Button)(({ theme }) => ({
   color: theme.palette.primary.main,
@@ -18,15 +19,18 @@ const ColorButton = styled(Button)(({ theme }) => ({
   marginRight: "20px",
 }));
 
-export default function NavBar({ changeLoginState, client }) {
+export default function NavBar({
+  changeLoginState,
+  client,
+  nodeId,
+  setNodeId,
+  pathSegments,
+  setPathSegments,
+  setCheckDirectory,
+  setLoadingNotification,
+  setLoadingFiles,
+}) {
   const location = useLocation();
-  let position = "sticky";
-  let drawerWidth = 0;
-  if (location.pathname == "/") {
-    position = "fixed";
-    drawerWidth = 240;
-  }
-
   const navigate = useNavigate();
   const handleHomePageClick = () => {
     navigate("/");
@@ -41,51 +45,96 @@ export default function NavBar({ changeLoginState, client }) {
   const showDashboardButton = location.pathname !== "/dashboard";
   const showAdminButton = location.pathname !== "/admin";
 
-  // console.log("position: ", position);
-  // console.log("drawerWidth: ", drawerWidth);
+  function handlePathClick(event) {
+    let clickedWord = event.target.textContent;
+
+    if (clickedWord.endsWith("\\")) {
+      clickedWord = clickedWord.slice(0, -1);
+    }
+
+    const index = pathSegments.indexOf(clickedWord);
+
+    if (index !== -1 && clickedWord !== nodeId) {
+      const clickedPath = pathSegments.slice(0, index + 1).join("\\");
+      loadFiles(clickedPath);
+    }
+  }
+
+  const isHomePage = location.pathname === "/";
+
+  function handleHomeClick() {
+    if (nodeId) {
+      setPathSegments([]);
+      loadFiles("");
+    }
+  }
+
+  function loadFiles(path) {
+    setNodeId(path);
+    setLoadingNotification(true);
+    setLoadingFiles(true);
+    setCheckDirectory(path);
+  }
+
   return (
     <AppBar
-      position={position}
+      position="sticky"
       sx={{
-        width: `calc(100% - ${drawerWidth}px)`,
-        ml: `${drawerWidth}px`,
+        width: `100%`,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
       }}
     >
       <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-        {showFilesButton && (
-        <ColorButton
-            variant="contained"
-            size="large"
-            onClick={handleHomePageClick}
-          >
-            Files
-          </ColorButton>
+        {isHomePage && (
+          <Breadcrumb
+            pathSegments={pathSegments}
+            onClick={handlePathClick}
+            onHomeClick={handleHomeClick}
+          />
+        )}
+      </Toolbar>
+
+      <Toolbar sx={{ justifyContent: "flex-end" }}>
+        <Typography
+          variant="h6"
+          noWrap
+          component="div"
+          sx={{
+            justifyContent: "flex-end",
+          }}
+        >
+          {showFilesButton && (
+            <ColorButton
+              variant="contained"
+              size="large"
+              onClick={handleHomePageClick}
+            >
+              Files
+            </ColorButton>
           )}
           {showDashboardButton && (
-          <ColorButton
-            variant="contained"
-            size="large"
-            onClick={handleDashboardPageClick}
-          >
-            Dashboard
-          </ColorButton>
+            <ColorButton
+              variant="contained"
+              size="large"
+              onClick={handleDashboardPageClick}
+            >
+              Dashboard
+            </ColorButton>
           )}
           {showAdminButton && (
-          <ColorButton
-            variant="contained"
-            size="large"
-            onClick={handleAdminPageClick}
-          >
-            Admin
-          </ColorButton>
+            <ColorButton
+              variant="contained"
+              size="large"
+              onClick={handleAdminPageClick}
+            >
+              Admin
+            </ColorButton>
           )}
         </Typography>
+        <MenuListElement changeLoginState={changeLoginState} client={client} />
       </Toolbar>
-      <MenuListElement changeLoginState={changeLoginState} client = {client}/>
     </AppBar>
   );
 }

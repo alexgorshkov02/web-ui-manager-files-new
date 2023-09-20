@@ -18,6 +18,10 @@ function directoryTree(path) {
   return tree;
 }
 
+function formatCtime(ctime) {
+  return new Date(ctime).toLocaleString(); // Converts ctime to a human-readable date string
+}
+
 
 function getFilesFromSelectedDirectory(rootDir, dirPath) {
   // console.log(rootDir, dirPath);
@@ -39,9 +43,9 @@ function getFilesFromSelectedDirectory(rootDir, dirPath) {
     const itemInfo = {
       name: item,
       relativePath: PATH.relative(rootDir, itemPath),
-      size: itemStats.size,
+      size: itemStats.isFile() ? itemStats.size : null,
       type: itemStats.isFile() ? 'file' : 'directory',
-      ctime: itemStats.ctime,
+      ctime: formatCtime(itemStats.ctime), 
     };
   
     if (itemStats.isDirectory()) {

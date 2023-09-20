@@ -2,7 +2,7 @@ export default function Breadcrumb({ pathSegments, onClick, onHomeClick }) {
     return (
       <div>
         <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
-          {pathSegments.length === 0 ? "Home" : "Home\\"}
+          {(pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === '')) ? "Home" : "Home\\"}
         </span>
         {pathSegments.map((segment, index) => (
           <span key={index} onClick={onClick} style={{ cursor: "pointer" }}>

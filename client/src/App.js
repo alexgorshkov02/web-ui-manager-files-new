@@ -14,7 +14,12 @@ import { withApollo } from "@apollo/client/react/hoc";
 const App = ({ client }) => {
   const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
   const { error, loading, refetch } = useCurrentUserQuery();
-  // console.log("loggedIn", loggedIn);
+
+  const [nodeId, setNodeId] = useState("");
+  const [pathSegments, setPathSegments] = useState([]);
+  const [checkDirectory, setCheckDirectory] = useState("");
+  const [loadingNotification, setLoadingNotification] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(false);
 
   const handleLogin = (status) => {
     refetch()
@@ -40,14 +45,38 @@ const App = ({ client }) => {
 
   if (loading) return <Loading />;
 
+  const commonProps = {
+    nodeId,
+    setNodeId,
+    pathSegments,
+    setPathSegments,
+    setCheckDirectory,
+    setLoadingNotification,
+  };
+
   return (
     <div>
       {loggedIn && (
         <div>
           <Router>
-            <NavBar changeLoginState={handleLogin} client={client} />
+            <NavBar
+              changeLoginState={handleLogin}
+              client={client}
+              setLoadingFiles={setLoadingFiles}
+              {...commonProps}
+            />
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route
+                path="/"
+                element={
+                  <Home
+                    loadingNotification={loadingNotification}
+                    loadingFiles={loadingFiles}
+                    checkDirectory={checkDirectory}
+                    {...commonProps}
+                  />
+                }
+              />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
             </Routes>
