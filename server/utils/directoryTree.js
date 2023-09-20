@@ -8,7 +8,7 @@ const fs = require('fs');
 
 function directoryTree(path) {
   const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, null, (item, currentPath, stats) => {
-    item.path = PATH.basename(currentPath);
+    // item.path = PATH.basename(currentPath);
     item.relativePath = PATH.relative(path, currentPath);
     // console.log(item);
     // console.log(PATH);
@@ -20,22 +20,22 @@ function directoryTree(path) {
 
 
 function getFilesFromSelectedDirectory(rootDir, dirPath) {
-  console.log(rootDir, dirPath);
+  // console.log(rootDir, dirPath);
   const items = fs.readdirSync(dirPath);
 
   const tree = {
     name: PATH.basename(dirPath),
     relativePath: PATH.relative(rootDir, dirPath),
-    size: 0, // Initialize the size as 0 for directories
+    size: 0,
     type: 'directory',
-    ctime: null, // You can modify this to include creation time for directories
+    ctime: null,
     children: [],
   };
 
-  for (const item of items) {
+  items.forEach((item) => {
     const itemPath = PATH.join(dirPath, item);
     const itemStats = fs.statSync(itemPath);
-
+  
     const itemInfo = {
       name: item,
       relativePath: PATH.relative(rootDir, itemPath),
@@ -43,15 +43,15 @@ function getFilesFromSelectedDirectory(rootDir, dirPath) {
       type: itemStats.isFile() ? 'file' : 'directory',
       ctime: itemStats.ctime,
     };
-
+  
     if (itemStats.isDirectory()) {
       itemInfo.children = getFilesFromSelectedDirectory(rootDir, itemPath);
     }
-
+  
     tree.children.push(itemInfo);
-  }
+  });
 
-  console.log("tree: ", tree);
+  // console.log("tree: ", tree);
   return tree;
 }
 

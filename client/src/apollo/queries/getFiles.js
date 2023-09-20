@@ -7,14 +7,12 @@ export const GET_FILES = gql`
       size
       ctime
       type
-      path
       relativePath
       children {
         name
         size
         ctime
         type
-        path
         relativePath
       }
     }

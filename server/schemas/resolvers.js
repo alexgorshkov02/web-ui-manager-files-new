@@ -25,6 +25,8 @@ const resolvers = {
   Query: {
     // directories: () => directories,
     directories: async (parent, args, context) => {
+      if (!context.user) return null;
+
       const paramNamePathToRootDir = "path-to-root-directory";
       const directoryParam = await AdminParams.findOne({
         name: paramNamePathToRootDir,
@@ -56,18 +58,21 @@ const resolvers = {
       });
 
       if (directoryParam) {
-        let fullPathToDirectory = directoryParam.value
+        let fullPathToDirectory = directoryParam.value;
 
         if (directory) {
-
           console.log("directory: ", directory);
           fullPathToDirectory = fullPathToDirectory + "\\\\" + directory;
-        }  
+        }
 
         // console.log("directory: ", directory);
         // const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
         // console.log("fullPathToDirectory: ", fullPathToDirectory);
-        const files = getFilesFromSelectedDirectory(directoryParam.value, fullPathToDirectory, directory);
+        const files = getFilesFromSelectedDirectory(
+          directoryParam.value,
+          fullPathToDirectory,
+          directory
+        );
         // console.log("files: ", files);
         return files;
       } else {
@@ -75,29 +80,6 @@ const resolvers = {
       }
     },
 
-    // files: async (parent, { directory }, context) => {
-    //   console.log("files_Query: directory: ", directory);
-    //   const paramNamePathToRootDir = "path-to-root-directory";
-    //   const directoryParam = await AdminParams.findOne({
-    //     name: paramNamePathToRootDir,
-    //   });
-    //   // console.log(directoryfromDB);
-    //   if (directoryParam) {
-    //     // console.log("directoryfromDB.value: ", directoryfromDB.value);
-    //     if (typeof directory !== "string") {
-    //       throw new Error('The "directory" argument must be a string.');
-    //     }
-
-    //     const path = directoryParam.value + directory;
-
-    //     // console.log("directories: ", directories);
-    //     const files = getFilesFromSelectedDirectory(path);
-    //     console.log("files: ", files);
-    //     return files;
-    //   } else {
-    //     return null;
-    //   }
-    // },
     users: async () => {
       try {
         const users = await User.find();
