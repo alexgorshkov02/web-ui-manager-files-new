@@ -1,7 +1,6 @@
 const PATH = require("path");
 const dirTree = require("directory-tree");
 const fs = require('fs');
-const http = require('http'); 
 
 //For testing (temp)
 // const path = "C:\\testFolder\\";
@@ -9,30 +8,53 @@ const http = require('http');
 
 function directoryTree(path) {
   const tree = dirTree(path, { attributes:["type"], extensions: /\.txt$/ }, null, (item, currentPath, stats) => {
-    item.path = PATH.basename(currentPath);
-    
+    // item.path = PATH.basename(currentPath);
+    item.relativePath = PATH.relative(path, currentPath);
     // console.log(item);
     // console.log(PATH);
     // console.log(stats);
   });
-
   // console.log("tree: ", tree);
-  // console.log(tree.children[0]);
   return tree;
 }
 
 
-function getFilesFromSelectedDirectory(path) {
-  let listOfFiles = [];
-  dirTree(path, {attributes:["size", "type", "ctime"]}, (item) => {
-    // console.log("Item: ", item);
-    listOfFiles.push(item);
+function getFilesFromSelectedDirectory(rootDir, dirPath) {
+  // console.log(rootDir, dirPath);
+  const items = fs.readdirSync(dirPath);
+
+  const tree = {
+    name: PATH.basename(dirPath),
+    relativePath: PATH.relative(rootDir, dirPath),
+    size: 0,
+    type: 'directory',
+    ctime: null,
+    children: [],
+  };
+
+  items.forEach((item) => {
+    const itemPath = PATH.join(dirPath, item);
+    const itemStats = fs.statSync(itemPath);
+  
+    const itemInfo = {
+      name: item,
+      relativePath: PATH.relative(rootDir, itemPath),
+      size: itemStats.size,
+      type: itemStats.isFile() ? 'file' : 'directory',
+      ctime: itemStats.ctime,
+    };
+  
+    if (itemStats.isDirectory()) {
+      itemInfo.children = getFilesFromSelectedDirectory(rootDir, itemPath);
+    }
+  
+    tree.children.push(itemInfo);
   });
 
-//   console.log(tree);
-  // console.log(tree.children[0]);
-  return listOfFiles;
+  // console.log("tree: ", tree);
+  return tree;
 }
+
 
 //For testing (temp)
 // const tree = directoryTree(path);

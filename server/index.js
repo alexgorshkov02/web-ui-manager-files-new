@@ -9,8 +9,12 @@ const { makeExecutableSchema } = require("@graphql-tools/schema");
 const { authDirective } = require("./utils/auth");
 const { typeDefs, resolvers } = require("./schemas/index");
 const db = require("./config/connection");
-const { User } = require("./models");
+const { User, AdminParams } = require("./models");
 const { GraphQLError } = require("graphql");
+const {
+  directoryTree,
+  getFilesFromSelectedDirectory,
+} = require("./utils/directoryTree");
 // const { printSchema } = require("graphql/utilities");
 
 const JWT = require("jsonwebtoken");
@@ -93,9 +97,27 @@ db.once("open", async () => {
   app.post("/download", async (req, res) => {
     try {
       const { pathToFile } = req.body;
-      console.log("path_SERVER: ", pathToFile);
+      const paramNamePathToRootDir = "path-to-root-directory";
+      const directoryParam = await AdminParams.findOne({
+        name: paramNamePathToRootDir,
+      });
 
-      res.sendFile(pathToFile, (error) => {
+      let fullPathToDirectory = directoryParam?.value;
+
+      if (pathToFile && fullPathToDirectory) {
+        // console.log("directory: ", directory);
+        fullPathToDirectory = fullPathToDirectory + "\\" + pathToFile;
+      } else {
+        console.log("Incorrect path to the file");
+        const message = "Incorrect path to the file";
+        throw new Error(message, {
+          extensions: { code: "INCORRECT_PATH" },
+        });
+      }
+
+      console.log("fullPathToDirectory: ", fullPathToDirectory);
+
+      res.sendFile(fullPathToDirectory, (error) => {
         if (error) {
           console.error("Error sending file:", error.message);
           res.status(500).send("Internal Server Error");

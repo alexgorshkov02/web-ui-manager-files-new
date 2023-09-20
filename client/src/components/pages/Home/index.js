@@ -8,20 +8,17 @@ import Divider from "@mui/material/Divider";
 import { useQuery } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
-import TreeItem from "@mui/lab/TreeItem";
-import TreeView from "@mui/lab/TreeView";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import CircularProgress from "@mui/material/CircularProgress";
-// import { GET_DIRECTORIES, GET_FILES } from "../../../apollo/queries";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 import { GET_NOTIFICATION } from "../../../apollo/queries/getNotification";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
 import { Grid, Button, Stack } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import "react-quill/dist/quill.snow.css";
+import Breadcrumb from "../../elements/Breadcrumb";
+import TreeViewDirectories from "../../elements/TreeViewDirectories";
+import Loading from "../../elements/Loading";
 
 //Depends on drawerWidth in the NavBar component. TODO: Make it global later
 const drawerWidth = 240;
@@ -29,46 +26,45 @@ const drawerWidth = 240;
 export default function PermanentDrawerLeft() {
   const [selectedDirectory, setSelectedDirectory] = useState("");
   const [directories, setDirectories] = useState();
-  const [nodeId, setNodeId] = useState();
+  const [nodeId, setNodeId] = useState("");
   const [nodeIds, setNodeIds] = useState([]);
-  const [path, setPath] = useState(null);
+  const [fileName, setFileName] = useState();
+
+  const [pathSegments, setPathSegments] = useState([]);
+  const handlePathChange = (path) => {
+    const parts = path?.split("\\");
+    setPathSegments(parts);
+  };
+
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
-  const [notification, setNotification] = useState();
+  const [notification, setNotification] = useState(null);
   const [expanded, setExpanded] = useState(["root"]);
-  const [loading, setLoading] = useState(false);
+  const [checkDirectory, setCheckDirectory] = useState("");
+  const [loadingNotification, setLoadingNotification] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
   const sanitizeHTML = (html) => {
     return { __html: html };
   };
 
   useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
-      // console.log("completedData: ", completedData);
       setDirectories(completedData.directories.children);
     },
   });
 
-  const {
-    // dataFiles,
-    // loadingFiles,
-    // errorFiles,
-    refetch: refetchFiles,
-  } = useQuery(GET_FILES, {
+  const { refetch: refetchFiles } = useQuery(GET_FILES, {
     variables: { directory: selectedDirectory },
     onCompleted: (completedData) => {
-      if (completedData.getFiles) {
-        setSelectedFiles(completedData.getFiles);
+      if (completedData.files) {
+        setSelectedFiles(completedData.files.children);
       }
     },
   });
 
-  const {
-    // dataNotification,
-    // loadingNotification,
-    // errorNotification,
-    refetch: refetchNotification,
-  } = useQuery(GET_NOTIFICATION, {
-    variables: { directory: selectedDirectory },
+  const { refetch: refetchNotification } = useQuery(GET_NOTIFICATION, {
+    variables: { directory: checkDirectory },
     onCompleted: (completedData) => {
       setNotification(completedData.getNotifications?.value);
     },
@@ -79,60 +75,50 @@ export default function PermanentDrawerLeft() {
   }, [nodeIds]);
 
   useEffect(() => {
-    if (selectedDirectory) {
-      // console.log("selectedDirectory: ", selectedDirectory);
+    refetchFiles()
+      .then((result) => {
+        if (result.data) {
+          setSelectedFiles(result.data.files.children);
+          handlePathChange(result.data.files.relativePath);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      })
+      .finally(() => {
+        setLoadingFiles(false);
+      });
+  }, [selectedDirectory, refetchFiles]);
 
-      if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
-        // console.log("selectedDirectory2: ", selectedDirectory);
-
-        refetchNotification()
-          .then((result) => {
-            // console.log(
-            //   "result.data.getNotifications: ",
-            //   result.data.getNotification
-            // );
-            if (result.data?.getNotification) {
-              // console.log("result.data: ", result.data);
-              setNotification(result.data.getNotification.value);
-            } else {
-              setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
-            }
-          })
-          .then(() => {
-            refetchFiles().then((result) => {
-              if (result.data) {
-                // console.log("result.data: ", result.data);
-                setSelectedFiles(result.data.getFiles);
-              }
-            });
-            setLoading(false);
-          });
-      } else {
-        setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
-        refetchFiles().then((result) => {
-          if (result.data) {
-            // console.log("result.data: ", result.data);
-            setSelectedFiles(result.data.getFiles);
+  useEffect(() => {
+    if (checkDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
+      refetchNotification()
+        .then((result) => {
+          if (result.data?.getNotification) {
+            setNotification(result.data.getNotification.value);
+          } else {
+            setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
           }
-          setLoading(false);
+          setSelectedDirectory(checkDirectory);
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        })
+        .finally(() => {
+          setLoadingNotification(false);
         });
+    } else {
+      if (!nodeIds.includes(nodeId)) {
+        setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
       }
+      setLoadingNotification(false);
+      setSelectedDirectory(checkDirectory);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDirectory]);
+  }, [checkDirectory, refetchNotification]);
 
-  // if (loadingDirectories || loadingFiles) return "Loading...";
-  // if (errorDirectories || errorFiles) {
-  //   // Handle any errors that occurred during the query
-  //   console.error(errorDirectories, errorFiles);
-  //   return (
-  //     <div>
-  //       {errorDirectories.message}, {errorFiles.message}
-  //     </div>
-  //   );
-  // }
-
-  const handleContextMenu = (event) => {
+  function handleContextMenu(event) {
     event.preventDefault();
     // console.log("event1: ", event.target.parentElement.dataset.id);
     // console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
@@ -142,31 +128,46 @@ export default function PermanentDrawerLeft() {
       handleClose();
     }
 
-    const elementPath = event.target.parentElement.dataset.id;
-    const parentPath = event.target.parentElement.parentElement.dataset.id;
+    const element = event.target.parentElement.dataset.id;
+    const parent = event.target.parentElement.parentElement.dataset.id;
 
-    if (elementPath || parentPath) {
-      if (elementPath) {
-        setPath(elementPath);
-      } else if (parentPath) {
-        setPath(parentPath);
+    let fileName = null;
+
+    if (element || parent) {
+      if (element) {
+        fileName = element;
+      } else if (parent) {
+        fileName = parent;
       } else {
-        console.log("Error: No path!");
+        console.log("Error: No name selected!");
       }
 
-      setContextMenu(
-        contextMenu === null
-          ? {
-              mouseX: event.clientX + 2,
-              mouseY: event.clientY - 6,
-            }
-          : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
-            // Other native context menus might behave different.
-            // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
-            null
-      );
+      if (fileName) {
+        const fileNameArr = fileName.split("|");
+        const name = fileNameArr[0];
+        const type = fileNameArr[1];
+
+        if (type === "file") {
+          setFileName(name);
+          setContextMenu(
+            contextMenu === null
+              ? {
+                  mouseX: event.clientX + 2,
+                  mouseY: event.clientY - 6,
+                }
+              : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+                // Other native context menus might behave different.
+                // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+                null
+          );
+        } else if (type === "directory") {
+          return null;
+        } else {
+          console.log("Type is not udentified");
+        }
+      }
     } else {
-      console.log("No path!");
+      console.log("No name!");
     }
   };
 
@@ -174,33 +175,22 @@ export default function PermanentDrawerLeft() {
     setContextMenu(null);
   };
 
-  async function handleDownload(e) {
-    // console.log("path to download: ", path)
-    if (path) {
+  async function handleDownload() {
+    if (pathSegments && fileName) {
+      const formattedPath = pathSegments.join("\\") + "\\" + fileName;
+
       try {
         const response = await fetch("http://localhost:3001/download", {
-          method: "POST", // Use the POST method
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pathToFile: path }), // Pass the file path in the request body
+          body: JSON.stringify({ pathToFile: formattedPath }),
         });
         if (!response.ok) {
           throw new Error("Failed to download file");
         }
-
-        // console.log('response:', response.headers.get('File-Name'));
-
-        // Get a file name from a selected path
-        const delimiter = "\\"; // Delimiter used to split the string
-        const lastDelimiterIndex = path.lastIndexOf(delimiter);
-        let fileName;
-        if (lastDelimiterIndex !== -1) {
-          fileName = path.substring(lastDelimiterIndex + 1);
-          console.log("fileName", fileName);
-        } else {
-          console.log("Delimiter not found in the string");
-        }
+        // console.log("response:", response.headers.get("File-Name"));
 
         // Trigger the file download using the Blob and anchor approach
         const blob = await response.blob();
@@ -220,102 +210,106 @@ export default function PermanentDrawerLeft() {
     } else handleClose();
   }
 
-  // Works only for text files. Other will be downloaded
-  const handleDoubleClick = async (currentPath) => {
-    if (currentPath) {
-      console.log("path1: ", currentPath.path);
+  function loadFiles(path) {
+    setNodeId(path);
+    setLoadingNotification(true);
+    setLoadingFiles(true);
+    setCheckDirectory(path);
+  }
+
+  function handleTreeClick(relativePath) {
+    if (nodeId === "" || relativePath !== nodeId) {
+      loadFiles(relativePath);
+    }
+  }
+
+  async function handleRowClick(typename, relativePath, name) {
+    if (typename === "directory") {
+      if (relativePath !== nodeId) {
+        loadFiles(relativePath);
+      }
+    } else if (typename === "file") {
       try {
-        // Encode the file path
-        // const encodedPath = encodeURIComponent(path1.path);
         const response = await fetch("http://localhost:3001/download", {
-          method: "POST", // Use the POST method
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pathToFile: currentPath.path }), // Pass the file path in the request body
+          body: JSON.stringify({ pathToFile: relativePath }),
         });
         if (!response.ok) {
           throw new Error("Failed to open file in browser");
         }
 
         const blobResponse = await response.blob();
-        // console.log("response: ", response.blob())
         const contentType = response.headers.get("content-type");
         const blob = new Blob([blobResponse], { type: contentType });
         const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, "_blank");
 
-        console.log("File opened in a new browser tab");
+        if (contentType && contentType.startsWith("text/")) {
+          window.open(blobUrl, "_blank");
+          console.log("File downloaded successfully");
+          handleClose();
+        } else {
+          const delimiter = "\\";
+          const lastDelimiterIndex = relativePath.lastIndexOf(delimiter);
+          let fileName;
+          if (lastDelimiterIndex !== -1) {
+            fileName = relativePath.substring(lastDelimiterIndex + 1);
+            console.log("fileName", fileName);
+          } else {
+            console.log("Delimiter not found in the string");
+          }
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = fileName;
+
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          console.log("File opened in a new browser tab");
+        }
+
         handleClose();
       } catch (error) {
         console.error("Error opening file in browser:", error.message);
       }
-    } else handleClose();
-  };
-
-  function handleClick(newPath, newNodeId) {
-    if (newNodeId !== nodeId && newPath !== path) {
-      setLoading(true);
-      setSelectedFiles([]);
-      setNodeId(newNodeId);
-      setSelectedDirectory(newPath);
     } else {
-      setLoading(true);
-      refetchFiles().then((result) => {
-        if (result.data) {
-          // console.log("result.data: ", result.data);
-          setSelectedFiles(result.data.getFiles);
-        }
-        setLoading(false);
-      });
+      console.log("Typename is unexpected. Typename: ", typename);
     }
   }
 
+  function handlePathClick(event) {
+    // Get the text content of the clicked element (span)
+    let clickedWord = event.target.textContent;
+
+    if (clickedWord.endsWith("\\")) {
+      clickedWord = clickedWord.slice(0, -1);
+    }
+
+    // Get the index of the clicked word in the pathSegments array
+    const index = pathSegments.indexOf(clickedWord);
+
+    if (index !== -1) {
+      const clickedPath = pathSegments.slice(0, index + 1).join("\\");
+      loadFiles(clickedPath);
+    }
+  }
+
+  function handleHomeClick() {
+    setPathSegments([]);
+    loadFiles("");
+  }
+
   function acceptNotification() {
-    // setShowNotification(false);
     setNotification(false);
     setNodeIds([...nodeIds, nodeId]);
   }
 
   function declineNotification() {
-    setSelectedFiles(false);
+    setPathSegments([]);
+    loadFiles("");
   }
-
-  //TODO: Check if it is possible to get rid of "node.path". After moving the root directory to the DB, it seems that "node.path" is equal to "node.name".
-  const renderItem = (parentName, node) => {
-    // console.log("parentName: ", parentName);
-    // console.log("Type: ", node);
-    // console.log("parentName: ", parentName + " + node.path: " + node.path);
-    // console.log("node.name: ", node);
-    return (
-      <TreeItem
-        onClick={() =>
-          handleClick(
-            parentName !== null ? parentName + "\\\\" + node.path : node.path,
-            parentName !== null ? parentName + node.path : node.path
-          )
-        }
-        key={node.name}
-        nodeId={parentName !== null ? parentName + node.path : node.path}
-        label={node.name}
-      >
-        {Array.isArray(node.children)
-          ? node.children
-              .filter((child) => child.type === "directory")
-              .map((child) => renderItem(node.name, child))
-          : null}
-      </TreeItem>
-    );
-  };
-
-  //To exclude the root folder
-  const renderTree = (nodes) =>
-    Array.isArray(nodes)
-      ? nodes
-          .filter((node) => node.type === "directory")
-          .map((node) => renderItem(null, node))
-      : null;
-  // console.log("styles:", styles);
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -332,102 +326,101 @@ export default function PermanentDrawerLeft() {
         variant="permanent"
         anchor="left"
       >
-        <Toolbar />
+        <Toolbar>
+          <Breadcrumb
+            pathSegments={pathSegments}
+            onClick={handlePathClick}
+            onHomeClick={handleHomeClick}
+          />
+        </Toolbar>
         <Divider />
         <List>
-          <TreeView
-            sx={{ height: 110, flexGrow: 1, maxWidth: 400 }}
-            defaultCollapseIcon={<ExpandMoreIcon />}
-            defaultExpandIcon={<ChevronRightIcon />}
-            // Use the expanded state
+          <TreeViewDirectories
             expanded={expanded}
-          >
-            {renderTree(directories)}
-          </TreeView>
+            selected={nodeId}
+            directories={directories}
+            handleClick={handleTreeClick}
+          />
         </List>
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default" }}>
         <Toolbar />
         <div style={{ height: 400, width: "100%" }}>
-          {loading ? (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <CircularProgress />
-            </div>
-          ) : selectedFiles ? (
-            notification ? (
-              <div>
-                <Grid container direction="column">
-                  <Typography
-                    variant="body1"
-                    style={{ whiteSpace: "pre-wrap", padding: "16px" }}
-                  >
-                    <span className="view ql-editor" dangerouslySetInnerHTML={sanitizeHTML(notification)} />
-                  </Typography>
-                  <Stack direction="row" spacing={2} justifyContent="center">
-                    <Button
-                      onClick={acceptNotification}
-                      variant="contained"
-                      color="success"
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      onClick={declineNotification}
-                      variant="contained"
-                      color="error"
-                    >
-                      Decline
-                    </Button>
-                  </Stack>
-                </Grid>
-              </div>
-            ) : (
-              <div
-                onContextMenu={handleContextMenu}
-                style={{ cursor: "context-menu" }}
-              >
-                <DataGrid
-                  slotProps={{
-                    pagination: {
-                      labelRowsPerPage: "Files per page",
-                    },
-                  }}
-                  getRowId={(row) => row.path}
-                  columns={[
-                    { field: "name", headerName: "Name", width: 200 },
-                    { field: "size", headerName: "Size", width: 100 },
-                    { field: "ctime", headerName: "Date", width: 100 },
-                  ]}
-                  rows={selectedFiles}
-                  onRowDoubleClick={(params) => {
-                    const selectedFile = params.row;
-                    handleDoubleClick(selectedFile);
-                    // console.log(`Opening file: ${selectedFile.name}`);
-                  }}
-                />
-                <Menu
-                  open={contextMenu !== null}
-                  onClose={handleClose}
-                  anchorReference="anchorPosition"
-                  anchorPosition={
-                    contextMenu !== null
-                      ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                      : undefined
-                  }
+          {loadingNotification ? (
+            <Loading />
+          ) : notification ? (
+            <div>
+              <Grid container direction="column">
+                <Typography
+                  variant="body1"
+                  style={{ whiteSpace: "pre-wrap", padding: "16px" }}
                 >
-                  <MenuItem onClick={handleDownload}>Download</MenuItem>
-                </Menu>
-              </div>
-            )
+                  <span
+                    className="view ql-editor"
+                    dangerouslySetInnerHTML={sanitizeHTML(notification)}
+                  />
+                </Typography>
+                <Stack direction="row" spacing={2} justifyContent="center">
+                  <Button
+                    onClick={acceptNotification}
+                    variant="contained"
+                    color="success"
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    onClick={declineNotification}
+                    variant="contained"
+                    color="error"
+                  >
+                    Decline
+                  </Button>
+                </Stack>
+              </Grid>
+            </div>
+          ) : loadingFiles ? (
+            <Loading />
+          ) : selectedFiles ? (
+            <div
+              onContextMenu={(event) => handleContextMenu(event)}
+              style={{ cursor: "context-menu" }}
+            >
+              <DataGrid
+                slotProps={{
+                  pagination: {
+                    labelRowsPerPage: "Files per page",
+                  },
+                }}
+                getRowId={(row) => row.name + "|" + row.type}
+                columns={[
+                  { field: "name", headerName: "Name", width: 200 },
+                  { field: "size", headerName: "Size", width: 100 },
+                  { field: "ctime", headerName: "Date", width: 100 },
+                ]}
+                rows={selectedFiles}
+                onRowClick={(params) => {
+                  const typename = params.row.type;
+                  const relativePath = params.row.relativePath;
+                  const name = params.row.name;
+                  handleRowClick(typename, relativePath, name);
+                }}
+              />
+
+              <Menu
+                open={contextMenu !== null}
+                onClose={handleClose}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                  contextMenu !== null
+                    ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                    : undefined
+                }
+              >
+                <MenuItem onClick={handleDownload}>Download</MenuItem>
+              </Menu>
+            </div>
           ) : (
-            <div>Select a folder</div>
+            <Loading />
           )}
         </div>
       </Box>

@@ -5,9 +5,9 @@ const typeDefs = `#graphql
 
   # This "Directory" type defines the queryable fields for every directory in our data source.
   type Directory {
-    path: String
     name: String
     type: String
+    relativePath: String
     children: [Directory]
   }
 
@@ -15,7 +15,9 @@ const typeDefs = `#graphql
     name: String
     size: String
     ctime: String
-    path: String
+    type: String
+    relativePath: String
+    children: [File]
   }
 
   type User {
@@ -41,9 +43,8 @@ const typeDefs = `#graphql
   # case, the "directories" query returns an array of zero or more Directories (defined above).
   type Query {
     directories: Directory @auth
-    files(directory: String): [File]
+    files(directory: String): File @auth
     users: [User]
-    getFiles(directory: String): [File] @auth
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
     getNotification(directory: String): Notification
@@ -57,6 +58,15 @@ const typeDefs = `#graphql
       ...allDirectories
     }
   }
+
+  # Recursive loading of files
+  fragment allFiles on File {
+    name
+    children {
+      ...allFiles
+    }
+  }
+
 
   type Auth {
     token: String

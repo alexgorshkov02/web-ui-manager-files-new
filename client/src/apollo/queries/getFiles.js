@@ -1,12 +1,20 @@
 import { gql } from "@apollo/client";
 
 export const GET_FILES = gql`
-  query GetFiles($directory: String) {
-    getFiles(directory: $directory) {
+  query Files($directory: String) {
+    files(directory: $directory) {
       name
       size
       ctime
-      path
+      type
+      relativePath
+      children {
+        name
+        size
+        ctime
+        type
+        relativePath
+      }
     }
   }
 `;
