@@ -15,7 +15,7 @@ import UserBar from "../../user/UserBar";
 const CustomizedButton = styled(Button)`
   color: #ffffff;
   text-transform: none !important;
-  margin-right: 10px;
+  paddingLeft: "20px"
 `;
 
 export default function MenuListComposition({ changeLoginState, client }) {
