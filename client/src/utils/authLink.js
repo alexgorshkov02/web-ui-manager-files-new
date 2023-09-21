@@ -1,5 +1,7 @@
+import Cookies from "js-cookie";
+
 const AuthLink = (operation, next) => {
-  const token = localStorage.getItem("jwt");
+  const token = Cookies.get("jwt");
   // console.log("AuthLink, token (client_part): ", token);
   if (token) {
     operation.setContext((contextValue) => ({

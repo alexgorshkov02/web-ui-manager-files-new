@@ -10,9 +10,12 @@ import NavBar from "./components/elements/NavBar";
 import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import { withApollo } from "@apollo/client/react/hoc";
+import Cookies from "js-cookie";
+import { useNavigate } from 'react-router-dom';
+
 
 const App = ({ client }) => {
-  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
+  const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
   const { error, loading, refetch } = useCurrentUserQuery();
 
   const [nodeId, setNodeId] = useState("");
@@ -20,15 +23,30 @@ const App = ({ client }) => {
   const [checkDirectory, setCheckDirectory] = useState("");
   const [loadingNotification, setLoadingNotification] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const navigate = useNavigate();
+
+  const resetStates = () => {
+    setNodeId("");
+    setPathSegments([]);
+    setCheckDirectory("");
+    setLoadingNotification(false);
+    setLoadingFiles(false);
+    // navigate('/');
+  };
 
   const handleLogin = (status) => {
     refetch()
       .then(() => {
-        // console.log("status: ", status);
+        // console.log("status1: ", status);
         setLoggedIn(status);
+        resetStates();
+        if (!status) navigate('/');
       })
       .catch(() => {
+        // console.log("status2: ", status);
         setLoggedIn(status);
+        resetStates();
+        if (!status) navigate('/');
       });
   };
 
@@ -58,7 +76,6 @@ const App = ({ client }) => {
     <div>
       {loggedIn && (
         <div>
-          <Router>
             <NavBar
               changeLoginState={handleLogin}
               client={client}
@@ -80,7 +97,6 @@ const App = ({ client }) => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
             </Routes>
-          </Router>
         </div>
       )}
       {!loggedIn && <LoginSignupForm changeLoginState={handleLogin} />}

@@ -31,7 +31,12 @@ function authDirective(directiveName) {
               if (context.user) {
                 return resolve(source, args, context, info);
               }
-              throw new Error("You need to be logged in.");
+              // throw new Error("You need to be logged in.");
+              const message =
+          "You need to be logged in";
+        throw new Error(message, {
+          extensions: { code: "UNAUTHENTICATED" },
+        });
             };
             return fieldConfig;
           }

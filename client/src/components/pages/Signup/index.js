@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useSignupMutation } from "../../../apollo/mutations";
+import Cookies from "js-cookie";
 
 const SignupForm = ({ changeLoginState }) => {
   const [username, setUsername] = useState("");
@@ -18,7 +19,7 @@ const SignupForm = ({ changeLoginState }) => {
     signup({
       update(cache, { data: { signup } }) {
         if (signup.token) {
-          localStorage.setItem("jwt", signup.token);
+          Cookies.set("jwt", signup.token);
           changeLoginState(true);
         }
       },
