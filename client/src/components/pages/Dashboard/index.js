@@ -95,20 +95,24 @@ export default function Dashboard() {
   const [deleteNotification] = useDeleteNotification();
 
   useEffect(() => {
-    refetchNotifications().then((result) => {
-      if (result.data) {
-        setNotifications(result.data.getNotifications);
-      }
-    });
-  }, [notifications, open, refetchNotifications]);
+    async function fetchDatahNotifications() {
+      try {
+        const result = await refetchNotifications();
 
-  useEffect(() => {
+        if (result?.data) setNotifications(result.data.getNotifications);
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+
     if (!open) {
+      fetchDatahNotifications();
       setId("");
       setCustomer("");
       setDirectory("");
       setValue("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleCloseClick = () => {

@@ -11,8 +11,7 @@ import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import { withApollo } from "@apollo/client/react/hoc";
 import Cookies from "js-cookie";
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate } from "react-router-dom";
 
 const App = ({ client }) => {
   const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
@@ -31,23 +30,17 @@ const App = ({ client }) => {
     setCheckDirectory("");
     setLoadingNotification(false);
     setLoadingFiles(false);
-    // navigate('/');
   };
 
-  const handleLogin = (status) => {
-    refetch()
-      .then(() => {
-        // console.log("status1: ", status);
-        setLoggedIn(status);
-        resetStates();
-        if (!status) navigate('/');
-      })
-      .catch(() => {
-        // console.log("status2: ", status);
-        setLoggedIn(status);
-        resetStates();
-        if (!status) navigate('/');
-      });
+  const handleLogin = async (status) => {
+    try {
+      await refetch();
+      resetStates();
+      navigate("/");
+      setLoggedIn(status);
+    } catch {
+      setLoggedIn(status);
+    }
   };
 
   useEffect(() => {
@@ -76,27 +69,27 @@ const App = ({ client }) => {
     <div>
       {loggedIn && (
         <div>
-            <NavBar
-              changeLoginState={handleLogin}
-              client={client}
-              setLoadingFiles={setLoadingFiles}
-              {...commonProps}
+          <NavBar
+            changeLoginState={handleLogin}
+            client={client}
+            setLoadingFiles={setLoadingFiles}
+            {...commonProps}
+          />
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Home
+                  loadingNotification={loadingNotification}
+                  loadingFiles={loadingFiles}
+                  checkDirectory={checkDirectory}
+                  {...commonProps}
+                />
+              }
             />
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Home
-                    loadingNotification={loadingNotification}
-                    loadingFiles={loadingFiles}
-                    checkDirectory={checkDirectory}
-                    {...commonProps}
-                  />
-                }
-              />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin" element={<Admin />} />
-            </Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
         </div>
       )}
       {!loggedIn && <LoginSignupForm changeLoginState={handleLogin} />}

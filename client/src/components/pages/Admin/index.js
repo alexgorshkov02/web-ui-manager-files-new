@@ -6,50 +6,41 @@ import { useQuery } from "@apollo/client";
 import { GET_ADMIN_PARAMS } from "../../../apollo/queries/getAdminParams";
 
 export default function Admin() {
-  const [updateAdminParam, { loadingSetAdminParams, errorSetAdminParams }] =
-    useSetAdminParams();
   const [adminParam, setAdminParam] = useState("");
 
-  const {
-    dataAdminParams,
-    loadingGetAdminParams,
-    errorGetAdminParams,
-    refetch,
-  } = useQuery(GET_ADMIN_PARAMS, {
+  const [updateAdminParam, { error: errorSetAdminParams }] =
+    useSetAdminParams();
+
+  if (errorSetAdminParams) {
+    console.error("Error:", errorSetAdminParams);
+  }
+
+  const { error: errorGetAdminParams, refetch } = useQuery(GET_ADMIN_PARAMS, {
     onCompleted: (completedData) => {
-      // console.log("completedData: ", completedData.getAdminParams);
       setAdminParam(completedData.getAdminParams);
     },
   });
-  // console.log("Admin component rendered");
-  // console.log("adminParam:", adminParam);
+
+  if (errorGetAdminParams) {
+    console.error("Error:", errorGetAdminParams);
+  }
 
   useEffect(() => {
-    // console.log("adminParam changed:", adminParam);
-    refetch();
+    async function fetchDataAdminParam() {
+      try {
+        await refetch();
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+
+    fetchDataAdminParam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminParam]);
 
   const parameters = [
     { id: "path-to-root-directory", label: "Path to root directory" },
   ];
-
-  if (loadingGetAdminParams || loadingSetAdminParams) {
-    // Show a loading message while data is loading
-    return <p>Loading...</p>;
-  }
-
-  if (errorGetAdminParams || errorSetAdminParams) {
-    // Handle query error
-    if (errorGetAdminParams) {
-      return (
-        <p>Error fetching admin parameters: {errorGetAdminParams.message}</p>
-      );
-    } else if (errorSetAdminParams) {
-      return (
-        <p>Error setting admin parameters: {errorSetAdminParams.message}</p>
-      );
-    } else return null;
-  }
 
   const handleTextChange = (event, paramName) => {
     const newValue = event.target.value;

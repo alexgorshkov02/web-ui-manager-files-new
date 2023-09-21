@@ -33,86 +33,103 @@ export default function PermanentDrawerLeft({
 }) {
   const [selectedDirectory, setSelectedDirectory] = useState("");
   const [directories, setDirectories] = useState();
-
   const [nodeIds, setNodeIds] = useState([]);
   const [fileName, setFileName] = useState();
-
-  // const [pathSegments, setPathSegments] = useState([]);
-  const handlePathChange = (path) => {
-    const parts = path?.split("\\");
-    setPathSegments(parts);
-  };
-
   const [selectedFiles, setSelectedFiles] = useState();
   const [contextMenu, setContextMenu] = useState(null);
   const [notification, setNotification] = useState(null);
   const [expanded, setExpanded] = useState(["root"]);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
+  const handlePathChange = (path) => {
+    const parts = path?.split("\\");
+    setPathSegments(parts);
+  };
+
   const sanitizeHTML = (html) => {
     return { __html: html };
   };
 
-  useQuery(GET_DIRECTORIES, {
+  const { error: errorGetDirectories } = useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
       setDirectories(completedData.directories.children);
     },
   });
 
-  const { refetch: refetchFiles } = useQuery(GET_FILES, {
-    variables: { directory: selectedDirectory },
-    onCompleted: (completedData) => {
-      if (completedData.files) {
-        setSelectedFiles(completedData.files.children);
-      }
-    },
-  });
+  if (errorGetDirectories) {
+    console.error("Error:", errorGetDirectories);
+  }
 
-  const { refetch: refetchNotification } = useQuery(GET_NOTIFICATION, {
-    variables: { directory: checkDirectory },
-    onCompleted: (completedData) => {
-      setNotification(completedData.getNotifications?.value);
-    },
-  });
+  const { error: errorFetchFiles, refetch: refetchFiles } = useQuery(
+    GET_FILES,
+    {
+      variables: { directory: selectedDirectory },
+      onCompleted: (completedData) => {
+        if (completedData.files) {
+          setSelectedFiles(completedData.files.children);
+        }
+      },
+    }
+  );
+
+  if (errorFetchFiles) {
+    console.error("Error:", errorFetchFiles);
+  }
+
+  const { error: errorFetchNotification, refetch: refetchNotification } =
+    useQuery(GET_NOTIFICATION, {
+      variables: { directory: checkDirectory },
+      onCompleted: (completedData) => {
+        setNotification(completedData.getNotifications?.value);
+      },
+    });
+
+  if (errorFetchNotification) {
+    console.error("Error:", errorFetchNotification);
+  }
 
   useEffect(() => {
     setExpanded(nodeIds);
   }, [nodeIds]);
 
   useEffect(() => {
-    refetchFiles()
-      .then((result) => {
-        if (result.data) {
-          setSelectedFiles(result.data.files.children);
-          handlePathChange(result.data.files.relativePath);
+    async function fetchFiles() {
+      try {
+        const result = await refetchFiles();
+        if (result?.data) {
+          setSelectedFiles(result.data.files?.children);
+          handlePathChange(result.data.files?.relativePath);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error:", error);
-      })
-      .finally(() => {
+      } finally {
         setLoadingFiles(false);
-      });
-          // eslint-disable-next-line react-hooks/exhaustive-deps
+      }
+    }
+
+    fetchFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDirectory]);
 
   useEffect(() => {
+    async function fetchNotification() {
+      try {
+        const result = await refetchNotification();
+        if (result?.data?.getNotification) {
+          setNotification(result.data.getNotification?.value);
+        } else {
+          setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
+        }
+        setSelectedDirectory(checkDirectory);
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setLoadingNotification(false);
+      }
+    }
+
     if (checkDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
-      refetchNotification()
-        .then((result) => {
-          if (result.data?.getNotification) {
-            setNotification(result.data.getNotification.value);
-          } else {
-            setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
-          }
-          setSelectedDirectory(checkDirectory);
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        })
-        .finally(() => {
-          setLoadingNotification(false);
-        });
+      fetchNotification();
     } else {
       if (!nodeIds.includes(nodeId)) {
         setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
@@ -120,7 +137,6 @@ export default function PermanentDrawerLeft({
       setLoadingNotification(false);
       setSelectedDirectory(checkDirectory);
     }
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkDirectory]);
 
@@ -145,7 +161,7 @@ export default function PermanentDrawerLeft({
       } else if (parent) {
         fileName = parent;
       } else {
-        console.log("Error: No name selected!");
+        console.error("Error: No name selected!");
       }
 
       if (fileName) {
@@ -254,7 +270,7 @@ export default function PermanentDrawerLeft({
 
         if (contentType && contentType.startsWith("text/")) {
           window.open(blobUrl, "_blank");
-          console.log("File downloaded successfully");
+          console.log("File opened in a new browser tab");
           handleClose();
         } else {
           const delimiter = "\\";
@@ -264,7 +280,7 @@ export default function PermanentDrawerLeft({
             fileName = relativePath.substring(lastDelimiterIndex + 1);
             console.log("fileName", fileName);
           } else {
-            console.log("Delimiter not found in the string");
+            console.error("Delimiter not found in the string");
           }
           const a = document.createElement("a");
           a.href = blobUrl;
@@ -273,7 +289,7 @@ export default function PermanentDrawerLeft({
           document.body.appendChild(a);
           a.click();
           a.remove();
-          console.log("File opened in a new browser tab");
+          console.log("File downloaded successfully");
         }
 
         handleClose();
@@ -281,7 +297,7 @@ export default function PermanentDrawerLeft({
         console.error("Error opening file in browser:", error.message);
       }
     } else {
-      console.log("Typename is unexpected. Typename: ", typename);
+      console.error("Typename is unexpected. Typename: ", typename);
     }
   }
 
