@@ -67,8 +67,8 @@ const App = ({ client }) => {
     setNodeId,
     pathSegments,
     setPathSegments,
-    selectedDirectory,
     setSelectedDirectory,
+    setLoadingNotification,
     loadFiles,
   };
 
@@ -88,10 +88,9 @@ const App = ({ client }) => {
                 <Home
                   nodeId={nodeId}
                   selectedDirectory={selectedDirectory}
+                  loadingNotification={loadingNotification}
                   loadingFiles={loadingFiles}
                   setLoadingFiles={setLoadingFiles}
-                  loadingNotification={loadingNotification}
-                  setLoadingNotification={setLoadingNotification}
                   checkDirectory={checkDirectory}
                   setCheckDirectory={setCheckDirectory}
                   {...commonProps}

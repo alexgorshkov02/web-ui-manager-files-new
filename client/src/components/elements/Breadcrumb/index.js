@@ -1,7 +1,12 @@
 import * as React from "react";
 import { Fragment } from "react";
 
-export default function Breadcrumb({ pathSegments, onClick, onHomeClick }) {
+export default function Breadcrumb({
+  pathSegments,
+  onHomeClick,
+  onElementClick,
+}) {
+    
   return (
     <div>
       <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
@@ -12,7 +17,7 @@ export default function Breadcrumb({ pathSegments, onClick, onHomeClick }) {
       </span>
       {pathSegments.map((segment, index) => (
         <Fragment key={index}>
-          <span onClick={onClick} style={{ cursor: "pointer" }}>
+          <span onClick={onElementClick} style={{ cursor: "pointer" }}>
             {segment}
           </span>
           {index < pathSegments.length - 1 && <span>{"\\"}</span>}

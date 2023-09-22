@@ -1,3 +1,4 @@
+import "react-quill/dist/quill.snow.css";
 import * as React from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -7,16 +8,14 @@ import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import { useQuery } from "@apollo/client";
 import { useState, useEffect } from "react";
-import { DataGrid } from "@mui/x-data-grid";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { GET_DIRECTORIES } from "../../../apollo/queries/getDirectories";
 import { GET_NOTIFICATION } from "../../../apollo/queries/getNotification";
 import { GET_FILES } from "../../../apollo/queries/getFiles";
-import { Grid, Button, Stack } from "@mui/material";
-import Typography from "@mui/material/Typography";
-import "react-quill/dist/quill.snow.css";
 import TreeViewDirectories from "../../elements/TreeViewDirectories";
+import DataGridFiles from "../../elements/DataGridFiles";
+import Notification from "../../elements/Notification";
 import Loading from "../../elements/Loading";
 
 const drawerWidth = 240;
@@ -24,12 +23,14 @@ const drawerWidth = 240;
 export default function PermanentDrawerLeft({
   nodeId,
   setNodeId,
-  selectedDirectory,
-  setSelectedDirectory,
   pathSegments,
   setPathSegments,
+  selectedDirectory,
+  setSelectedDirectory,
   loadingNotification,
   setLoadingNotification,
+  loadingFiles,
+  setLoadingFiles,
   checkDirectory,
   setCheckDirectory,
   loadFiles,
@@ -41,15 +42,10 @@ export default function PermanentDrawerLeft({
   const [contextMenu, setContextMenu] = useState(null);
   const [notification, setNotification] = useState(null);
   const [expanded, setExpanded] = useState(["root"]);
-  const [loadingFiles, setLoadingFiles] = useState(false);
 
   const handlePathChange = (path) => {
     const parts = path?.split("\\");
     setPathSegments(parts);
-  };
-
-  const sanitizeHTML = (html) => {
-    return { __html: html };
   };
 
   const { error: errorGetDirectories } = useQuery(GET_DIRECTORIES, {
@@ -131,7 +127,7 @@ export default function PermanentDrawerLeft({
       if (!nodeIds.includes(nodeId)) {
         setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
       }
-      const result = fetchFiles();
+      fetchFiles();
       setLoadingNotification(false);
     }
     setCheckDirectory(false);
@@ -143,7 +139,7 @@ export default function PermanentDrawerLeft({
 
     //To close the menu by clicking right button if it is alreayd open
     if (contextMenu) {
-      handleClose();
+      handleCloseMenu();
     }
 
     const element = event.target.parentElement.dataset.id;
@@ -189,11 +185,11 @@ export default function PermanentDrawerLeft({
     }
   }
 
-  const handleClose = () => {
+  const handleCloseMenu = () => {
     setContextMenu(null);
   };
 
-  async function handleDownload() {
+  async function handleDownloadFile() {
     if (fileName) {
       const formattedPath = pathSegments.join("\\") + "\\" + fileName;
 
@@ -221,11 +217,11 @@ export default function PermanentDrawerLeft({
         a.remove();
 
         console.log("File downloaded successfully");
-        handleClose();
+        handleCloseMenu();
       } catch (error) {
         console.error("Error downloading file:", error.message);
       }
-    } else handleClose();
+    } else handleCloseMenu();
   }
 
   function handleTreeClick(relativePath) {
@@ -260,7 +256,7 @@ export default function PermanentDrawerLeft({
         if (contentType && contentType.startsWith("text/")) {
           window.open(blobUrl, "_blank");
           console.log("File opened in a new browser tab");
-          handleClose();
+          handleCloseMenu();
         } else {
           const delimiter = "\\";
           const lastDelimiterIndex = relativePath.lastIndexOf(delimiter);
@@ -281,7 +277,7 @@ export default function PermanentDrawerLeft({
           console.log("File downloaded successfully");
         }
 
-        handleClose();
+        handleCloseMenu();
       } catch (error) {
         console.error("Error opening file in browser:", error.message);
       }
@@ -333,35 +329,11 @@ export default function PermanentDrawerLeft({
           {loadingNotification ? (
             <Loading />
           ) : notification ? (
-            <div>
-              <Grid container direction="column">
-                <Typography
-                  variant="body1"
-                  style={{ whiteSpace: "pre-wrap", padding: "16px" }}
-                >
-                  <span
-                    className="view ql-editor"
-                    dangerouslySetInnerHTML={sanitizeHTML(notification)}
-                  />
-                </Typography>
-                <Stack direction="row" spacing={2} justifyContent="center">
-                  <Button
-                    onClick={acceptNotification}
-                    variant="contained"
-                    color="success"
-                  >
-                    Accept
-                  </Button>
-                  <Button
-                    onClick={declineNotification}
-                    variant="contained"
-                    color="error"
-                  >
-                    Decline
-                  </Button>
-                </Stack>
-              </Grid>
-            </div>
+            <Notification
+              notification={notification}
+              acceptNotification={acceptNotification}
+              declineNotification={declineNotification}
+            />
           ) : loadingFiles ? (
             <Loading />
           ) : selectedFiles ? (
@@ -369,32 +341,13 @@ export default function PermanentDrawerLeft({
               onContextMenu={(event) => handleContextMenu(event)}
               style={{ cursor: "context-menu" }}
             >
-              <DataGrid
-                slotProps={{
-                  pagination: {
-                    labelRowsPerPage: "Files per page",
-                  },
-                }}
-                slots={{
-                  NoResultsOverlay: "No files",
-                }}
-                getRowId={(row) => row.name + "|" + row.type}
-                columns={[
-                  { field: "name", headerName: "Name", width: 200 },
-                  { field: "size", headerName: "Size", width: 100 },
-                  { field: "ctime", headerName: "Date", width: 300 },
-                ]}
-                rows={selectedFiles}
-                onRowClick={(params) => {
-                  const typename = params.row.type;
-                  const relativePath = params.row.relativePath;
-                  handleRowClick(typename, relativePath);
-                }}
+              <DataGridFiles
+                selectedFiles={selectedFiles}
+                handleRowClick={handleRowClick}
               />
-
               <Menu
                 open={contextMenu !== null}
-                onClose={handleClose}
+                onClose={handleCloseMenu}
                 anchorReference="anchorPosition"
                 anchorPosition={
                   contextMenu !== null
@@ -402,7 +355,7 @@ export default function PermanentDrawerLeft({
                     : undefined
                 }
               >
-                <MenuItem onClick={handleDownload}>Download</MenuItem>
+                <MenuItem onClick={handleDownloadFile}>Download</MenuItem>
               </Menu>
             </div>
           ) : (
