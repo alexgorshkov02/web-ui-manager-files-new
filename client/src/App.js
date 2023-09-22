@@ -10,9 +10,11 @@ import NavBar from "./components/elements/NavBar";
 import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import { withApollo } from "@apollo/client/react/hoc";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
 
 const App = ({ client }) => {
-  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("jwt"));
+  const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
   const { error, loading, refetch } = useCurrentUserQuery();
 
   const [nodeId, setNodeId] = useState("");
@@ -20,16 +22,25 @@ const App = ({ client }) => {
   const [checkDirectory, setCheckDirectory] = useState("");
   const [loadingNotification, setLoadingNotification] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const navigate = useNavigate();
 
-  const handleLogin = (status) => {
-    refetch()
-      .then(() => {
-        // console.log("status: ", status);
-        setLoggedIn(status);
-      })
-      .catch(() => {
-        setLoggedIn(status);
-      });
+  const resetStates = () => {
+    setNodeId("");
+    setPathSegments([]);
+    setCheckDirectory("");
+    setLoadingNotification(false);
+    setLoadingFiles(false);
+  };
+
+  const handleLogin = async (status) => {
+    try {
+      await refetch();
+      resetStates();
+      navigate("/");
+      setLoggedIn(status);
+    } catch {
+      setLoggedIn(status);
+    }
   };
 
   useEffect(() => {
@@ -58,29 +69,27 @@ const App = ({ client }) => {
     <div>
       {loggedIn && (
         <div>
-          <Router>
-            <NavBar
-              changeLoginState={handleLogin}
-              client={client}
-              setLoadingFiles={setLoadingFiles}
-              {...commonProps}
+          <NavBar
+            changeLoginState={handleLogin}
+            client={client}
+            setLoadingFiles={setLoadingFiles}
+            {...commonProps}
+          />
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Home
+                  loadingNotification={loadingNotification}
+                  loadingFiles={loadingFiles}
+                  checkDirectory={checkDirectory}
+                  {...commonProps}
+                />
+              }
             />
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Home
-                    loadingNotification={loadingNotification}
-                    loadingFiles={loadingFiles}
-                    checkDirectory={checkDirectory}
-                    {...commonProps}
-                  />
-                }
-              />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin" element={<Admin />} />
-            </Routes>
-          </Router>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
         </div>
       )}
       {!loggedIn && <LoginSignupForm changeLoginState={handleLogin} />}

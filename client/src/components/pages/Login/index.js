@@ -1,16 +1,16 @@
 import React, { useState } from "react";
-import {useLoginMutation} from "../../../apollo/mutations"
+import { useLoginMutation } from "../../../apollo/mutations";
+import Cookies from "js-cookie";
+import Loading from "../../elements/Loading";
 
 const LoginForm = ({ changeLoginState }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [login, { loading, error }] = useLoginMutation();
 
-  if (loading) return "Loading...";
+  if (loading) return <Loading />;
   if (error) {
-    // Handle any errors that occurred during the query
     console.error(error);
-    return <div>{error.message}</div>;
   }
 
   const onSubmit = async (event) => {
@@ -19,16 +19,16 @@ const LoginForm = ({ changeLoginState }) => {
       const { data } = await login({
         variables: { username: username, password: password },
       });
-  
+
       if (data.login.token) {
-        localStorage.setItem("jwt", data.login.token);
+        Cookies.set("jwt", data.login.token);
         changeLoginState(true);
       }
     } catch (error) {
       console.error("Error logging in:", error);
     }
   };
-  
+
   return (
     <div className="login">
       <form onSubmit={onSubmit}>

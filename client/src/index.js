@@ -13,6 +13,8 @@ import {
 import { RestLink } from "apollo-link-rest";
 import AuthLink from "./utils/authLink";
 import { onError } from "@apollo/client/link/error";
+import Cookies from "js-cookie";
+import { BrowserRouter } from "react-router-dom";
 
 const httpLink = createHttpLink({
   uri: "http://localhost:3001/graphql",
@@ -32,7 +34,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
       );
 
       if (extensions.code === "UNAUTHENTICATED") {
-        localStorage.removeItem("jwt");
+        Cookies.remove("jwt");
         client.clearStore();
       }
       return null;
@@ -51,9 +53,11 @@ const client = new ApolloClient({
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <ApolloProvider client={client}>
-    <App />
-  </ApolloProvider>
+  <BrowserRouter>
+    <ApolloProvider client={client}>
+      <App />
+    </ApolloProvider>
+  </BrowserRouter>
 );
 
 // If you want to start measuring performance in your app, pass a function
