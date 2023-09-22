@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
+import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
 import { useSetAdminParams } from "../../../apollo/mutations";
 import { useQuery } from "@apollo/client";
@@ -108,6 +109,7 @@ export default function Admin() {
       noValidate
       autoComplete="off"
     >
+      <CssBaseline />
       {renderFields(parameters)}
     </Box>
   );

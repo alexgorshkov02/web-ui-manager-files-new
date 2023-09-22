@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useEffect, createRef } from "react";
+import CssBaseline from "@mui/material/CssBaseline";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Box from "@mui/material/Box";
@@ -343,10 +344,15 @@ export default function Dashboard() {
 
   return (
     <Box>
+      <CssBaseline />
       {renderGrid(notifications)}
       <Dialog
         open={open}
-        onClose={handleCloseClick}
+        onClose={(event, reason) => {
+          if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
+            handleCloseClick();
+          }
+        }}
         fullWidth
         PaperProps={{
           sx: dialogStyles,

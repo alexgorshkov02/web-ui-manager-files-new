@@ -25,23 +25,24 @@ export default function NavBar({
   changeLoginState,
   client,
   setNodeId,
-  setSelectedDirectory,
   pathSegments,
   setPathSegments,
+  setSelectedDirectory,
   loadFiles,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const handleHomePageClick = () => {
-    handleHomeClick();
-    navigate("/");
-  };
+
+
   const handleDashboardPageClick = () => {
+    setPathSegments([]);
     navigate("/dashboard");
   };
   const handleAdminPageClick = () => {
+    setPathSegments([]);
     navigate("/admin");
   };
+
   const homePage = location.pathname === "/";
   const dashboardPage = location.pathname === "/dashboard";
   const adminPage = location.pathname === "/admin";
@@ -66,6 +67,7 @@ export default function NavBar({
     setNodeId("");
     setSelectedDirectory("");
     loadFiles();
+    navigate("/");
   }
 
   function handleRefreshClick() {
@@ -83,13 +85,11 @@ export default function NavBar({
       }}
     >
       <Toolbar>
-        {homePage && (
           <Breadcrumb
             pathSegments={pathSegments}
-            onClick={handlePathClick}
             onHomeClick={handleHomeClick}
+            onElementClick={handlePathClick}
           />
-        )}
       </Toolbar>
 
       <Toolbar sx={{ justifyContent: "flex-end" }}>
@@ -101,15 +101,6 @@ export default function NavBar({
             justifyContent: "flex-end",
           }}
         >
-          {(dashboardPage || adminPage) && (
-            <ColorButton
-              variant="contained"
-              size="large"
-              onClick={handleHomePageClick}
-            >
-              Files
-            </ColorButton>
-          )}
           {(homePage || adminPage) && (
             <ColorButton
               variant="contained"
@@ -129,13 +120,14 @@ export default function NavBar({
             </ColorButton>
           )}
           {homePage && (
-            <ColorButton
-              variant="contained"
-              size="large"
+            <IconButton
+              sx={{ marginRight: "10px" }}
+              edge="end"
+              aria-label="refresh"
               onClick={() => handleRefreshClick()}
             >
-              <RefreshIcon />
-            </ColorButton>
+              <RefreshIcon style={{ color: "white" }} />
+            </IconButton>
           )}
         </Typography>
         <MenuListElement changeLoginState={changeLoginState} client={client} />
