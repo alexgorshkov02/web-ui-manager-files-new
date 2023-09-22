@@ -62,7 +62,7 @@ const resolvers = {
 
         if (directory) {
           console.log("directory: ", directory);
-          fullPathToDirectory = fullPathToDirectory + "\\\\" + directory;
+          fullPathToDirectory = fullPathToDirectory + "\\" + directory;
         }
 
         // console.log("directory: ", directory);

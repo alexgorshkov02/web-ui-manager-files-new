@@ -8,6 +8,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { common } from "@mui/material/colors";
 import { styled } from "@mui/material/styles";
 import Breadcrumb from "../../elements/Breadcrumb";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import IconButton from "@mui/material/IconButton";
 
 const ColorButton = styled(Button)(({ theme }) => ({
   color: theme.palette.primary.main,
@@ -22,17 +24,16 @@ const ColorButton = styled(Button)(({ theme }) => ({
 export default function NavBar({
   changeLoginState,
   client,
-  nodeId,
   setNodeId,
+  setSelectedDirectory,
   pathSegments,
   setPathSegments,
-  setCheckDirectory,
-  setLoadingNotification,
-  setLoadingFiles,
+  loadFiles,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const handleHomePageClick = () => {
+    handleHomeClick();
     navigate("/");
   };
   const handleDashboardPageClick = () => {
@@ -41,39 +42,34 @@ export default function NavBar({
   const handleAdminPageClick = () => {
     navigate("/admin");
   };
-  const showFilesButton = location.pathname !== "/";
-  const showDashboardButton = location.pathname !== "/dashboard";
-  const showAdminButton = location.pathname !== "/admin";
+  const homePage = location.pathname === "/";
+  const dashboardPage = location.pathname === "/dashboard";
+  const adminPage = location.pathname === "/admin";
 
   function handlePathClick(event) {
     let clickedWord = event.target.textContent;
-
     if (clickedWord.endsWith("\\")) {
       clickedWord = clickedWord.slice(0, -1);
     }
 
     const index = pathSegments.indexOf(clickedWord);
-
-    if (index !== -1 && clickedWord !== nodeId) {
+    if (index !== -1) {
       const clickedPath = pathSegments.slice(0, index + 1).join("\\");
-      loadFiles(clickedPath);
+      setNodeId(clickedPath);
+      setSelectedDirectory(clickedPath);
+      loadFiles();
     }
   }
-
-  const isHomePage = location.pathname === "/";
 
   function handleHomeClick() {
-    if (nodeId) {
-      setPathSegments([]);
-      loadFiles("");
-    }
+    setPathSegments([]);
+    setNodeId("");
+    setSelectedDirectory("");
+    loadFiles();
   }
 
-  function loadFiles(path) {
-    setNodeId(path);
-    setLoadingNotification(true);
-    setLoadingFiles(true);
-    setCheckDirectory(path);
+  function handleRefreshClick() {
+    loadFiles();
   }
 
   return (
@@ -87,7 +83,7 @@ export default function NavBar({
       }}
     >
       <Toolbar>
-        {isHomePage && (
+        {homePage && (
           <Breadcrumb
             pathSegments={pathSegments}
             onClick={handlePathClick}
@@ -105,7 +101,7 @@ export default function NavBar({
             justifyContent: "flex-end",
           }}
         >
-          {showFilesButton && (
+          {(dashboardPage || adminPage) && (
             <ColorButton
               variant="contained"
               size="large"
@@ -114,7 +110,7 @@ export default function NavBar({
               Files
             </ColorButton>
           )}
-          {showDashboardButton && (
+          {(homePage || adminPage) && (
             <ColorButton
               variant="contained"
               size="large"
@@ -123,13 +119,22 @@ export default function NavBar({
               Dashboard
             </ColorButton>
           )}
-          {showAdminButton && (
+          {(homePage || dashboardPage) && (
             <ColorButton
               variant="contained"
               size="large"
               onClick={handleAdminPageClick}
             >
               Admin
+            </ColorButton>
+          )}
+          {homePage && (
+            <ColorButton
+              variant="contained"
+              size="large"
+              onClick={() => handleRefreshClick()}
+            >
+              <RefreshIcon />
             </ColorButton>
           )}
         </Typography>
