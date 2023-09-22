@@ -22,16 +22,18 @@ import Loading from "../../elements/Loading";
 const drawerWidth = 240;
 
 export default function PermanentDrawerLeft({
-  setPathSegments,
   nodeId,
   setNodeId,
+  selectedDirectory,
+  setSelectedDirectory,
+  pathSegments,
+  setPathSegments,
   loadingNotification,
   setLoadingNotification,
   checkDirectory,
   setCheckDirectory,
-  pathSegments,
+  loadFiles,
 }) {
-  const [selectedDirectory, setSelectedDirectory] = useState("");
   const [directories, setDirectories] = useState();
   const [nodeIds, setNodeIds] = useState([]);
   const [fileName, setFileName] = useState();
@@ -78,7 +80,7 @@ export default function PermanentDrawerLeft({
 
   const { error: errorFetchNotification, refetch: refetchNotification } =
     useQuery(GET_NOTIFICATION, {
-      variables: { directory: checkDirectory },
+      variables: { directory: selectedDirectory },
       onCompleted: (completedData) => {
         setNotification(completedData.getNotifications?.value);
       },
@@ -93,6 +95,21 @@ export default function PermanentDrawerLeft({
   }, [nodeIds]);
 
   useEffect(() => {
+    async function fetchNotification() {
+      try {
+        const result = await refetchNotification();
+        if (result?.data?.getNotification) {
+          setNotification(result.data.getNotification?.value);
+        } else {
+          setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setLoadingNotification(false);
+      }
+    }
+
     async function fetchFiles() {
       try {
         const result = await refetchFiles();
@@ -107,43 +124,22 @@ export default function PermanentDrawerLeft({
       }
     }
 
-    fetchFiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDirectory]);
-
-  useEffect(() => {
-    async function fetchNotification() {
-      try {
-        const result = await refetchNotification();
-        if (result?.data?.getNotification) {
-          setNotification(result.data.getNotification?.value);
-        } else {
-          setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
-        }
-        setSelectedDirectory(checkDirectory);
-      } catch (error) {
-        console.error("Error:", error);
-      } finally {
-        setLoadingNotification(false);
-      }
-    }
-
-    if (checkDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
+    if (selectedDirectory.indexOf("\\") === -1 && !nodeIds.includes(nodeId)) {
       fetchNotification();
+      fetchFiles();
     } else {
       if (!nodeIds.includes(nodeId)) {
         setNodeIds((prevNodeIds) => [...prevNodeIds, nodeId]);
       }
+      const result = fetchFiles();
       setLoadingNotification(false);
-      setSelectedDirectory(checkDirectory);
     }
+    setCheckDirectory(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkDirectory]);
 
   function handleContextMenu(event) {
     event.preventDefault();
-    // console.log("event1: ", event.target.parentElement.dataset.id);
-    // console.log("event2: ", event.target.parentElement.parentElement.dataset.id);
 
     //To close the menu by clicking right button if it is alreayd open
     if (contextMenu) {
@@ -232,24 +228,17 @@ export default function PermanentDrawerLeft({
     } else handleClose();
   }
 
-  function loadFiles(path) {
-    setNodeId(path);
-    setLoadingNotification(true);
-    setLoadingFiles(true);
-    setCheckDirectory(path);
-  }
-
   function handleTreeClick(relativePath) {
-    if (nodeId === "" || relativePath !== nodeId) {
-      loadFiles(relativePath);
-    }
+    setNodeId(relativePath);
+    setSelectedDirectory(relativePath);
+    loadFiles();
   }
 
-  async function handleRowClick(typename, relativePath, name) {
+  async function handleRowClick(typename, relativePath) {
     if (typename === "directory") {
-      if (relativePath !== nodeId) {
-        loadFiles(relativePath);
-      }
+      setNodeId(relativePath);
+      setSelectedDirectory(relativePath);
+      loadFiles();
     } else if (typename === "file") {
       try {
         const response = await fetch("http://localhost:3001/download", {
@@ -308,7 +297,9 @@ export default function PermanentDrawerLeft({
 
   function declineNotification() {
     setPathSegments([]);
-    loadFiles("");
+    setNodeId("");
+    setSelectedDirectory("");
+    loadFiles();
   }
 
   return (
@@ -384,6 +375,9 @@ export default function PermanentDrawerLeft({
                     labelRowsPerPage: "Files per page",
                   },
                 }}
+                slots={{
+                  NoResultsOverlay: "No files",
+                }}
                 getRowId={(row) => row.name + "|" + row.type}
                 columns={[
                   { field: "name", headerName: "Name", width: 200 },
@@ -394,8 +388,7 @@ export default function PermanentDrawerLeft({
                 onRowClick={(params) => {
                   const typename = params.row.type;
                   const relativePath = params.row.relativePath;
-                  const name = params.row.name;
-                  handleRowClick(typename, relativePath, name);
+                  handleRowClick(typename, relativePath);
                 }}
               />
 

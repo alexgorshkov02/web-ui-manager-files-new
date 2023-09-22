@@ -1,15 +1,23 @@
+import * as React from "react";
+import { Fragment } from "react";
+
 export default function Breadcrumb({ pathSegments, onClick, onHomeClick }) {
-    return (
-      <div>
-        <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
-          {(pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === '')) ? "Home" : "Home\\"}
-        </span>
-        {pathSegments.map((segment, index) => (
-          <span key={index} onClick={onClick} style={{ cursor: "pointer" }}>
+  return (
+    <div>
+      <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
+        {pathSegments.length === 0 ||
+        (pathSegments.length === 1 && pathSegments[0] === "")
+          ? "Home"
+          : "Home\\"}
+      </span>
+      {pathSegments.map((segment, index) => (
+        <Fragment key={index}>
+          <span onClick={onClick} style={{ cursor: "pointer" }}>
             {segment}
-            {index < pathSegments.length - 1 && <span>{"\\"}</span>}
           </span>
-        ))}
-      </div>
-    );
-  }
+          {index < pathSegments.length - 1 && <span>{"\\"}</span>}
+        </Fragment>
+      ))}
+    </div>
+  );
+}

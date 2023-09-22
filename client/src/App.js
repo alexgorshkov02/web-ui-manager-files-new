@@ -19,15 +19,16 @@ const App = ({ client }) => {
 
   const [nodeId, setNodeId] = useState("");
   const [pathSegments, setPathSegments] = useState([]);
-  const [checkDirectory, setCheckDirectory] = useState("");
+  const [checkDirectory, setCheckDirectory] = useState(false);
   const [loadingNotification, setLoadingNotification] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [selectedDirectory, setSelectedDirectory] = useState("");
   const navigate = useNavigate();
 
   const resetStates = () => {
     setNodeId("");
     setPathSegments([]);
-    setCheckDirectory("");
+    setCheckDirectory(false);
     setLoadingNotification(false);
     setLoadingFiles(false);
   };
@@ -56,13 +57,19 @@ const App = ({ client }) => {
 
   if (loading) return <Loading />;
 
+  function loadFiles() {
+    setLoadingNotification(true);
+    setLoadingFiles(true);
+    setCheckDirectory(true);
+  }
+
   const commonProps = {
-    nodeId,
     setNodeId,
     pathSegments,
     setPathSegments,
-    setCheckDirectory,
-    setLoadingNotification,
+    selectedDirectory,
+    setSelectedDirectory,
+    loadFiles,
   };
 
   return (
@@ -72,7 +79,6 @@ const App = ({ client }) => {
           <NavBar
             changeLoginState={handleLogin}
             client={client}
-            setLoadingFiles={setLoadingFiles}
             {...commonProps}
           />
           <Routes>
@@ -80,9 +86,14 @@ const App = ({ client }) => {
               path="/"
               element={
                 <Home
-                  loadingNotification={loadingNotification}
+                  nodeId={nodeId}
+                  selectedDirectory={selectedDirectory}
                   loadingFiles={loadingFiles}
+                  setLoadingFiles={setLoadingFiles}
+                  loadingNotification={loadingNotification}
+                  setLoadingNotification={setLoadingNotification}
                   checkDirectory={checkDirectory}
+                  setCheckDirectory={setCheckDirectory}
                   {...commonProps}
                 />
               }
