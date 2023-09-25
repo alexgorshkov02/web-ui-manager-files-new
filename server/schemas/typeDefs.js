@@ -23,6 +23,7 @@ const typeDefs = `#graphql
   type User {
     id: ID!
     username: String!
+    role: String!
   }
 
   type AdminParams {
