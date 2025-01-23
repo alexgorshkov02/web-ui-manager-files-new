@@ -3,6 +3,8 @@ import "./App.css";
 import Home from "./components/pages/Home";
 import Dashboard from "./components/pages/Dashboard";
 import Admin from "./components/pages/Admin";
+import Login from "./components/pages/Login";
+import Signup from "./components/pages/Signup";
 import React, { useState, useEffect } from "react";
 import LoginSignupForm from "./components/pages/LoginSignup";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -13,6 +15,7 @@ import { withApollo } from "@apollo/client/react/hoc";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RerouteToHomePage from "./components/RerouteToHomePage";
 
 const App = ({ client }) => {
   const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
@@ -39,6 +42,7 @@ const App = ({ client }) => {
     try {
       const result = await refetch();
       if (result) {
+        console.log("UserSet1: ", user);
         setUser(result.data?.currentUser);
       }
       resetStates();
@@ -123,7 +127,14 @@ const App = ({ client }) => {
                 />
               }
             />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute user={user}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin"
               element={
@@ -132,9 +143,26 @@ const App = ({ client }) => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/login"
+              element={
+                <RerouteToHomePage user={user}>
+                  <Login />
+                </RerouteToHomePage>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <RerouteToHomePage user={user}>
+                  <Signup />
+                </RerouteToHomePage>
+              }
+            />
           </Routes>
         </div>
       )}
+
       {!loggedIn && <LoginSignupForm changeLoginState={handleLogin} />}
       {!loggedIn && error && <div>{error.message}</div>}
     </div>

@@ -106,7 +106,7 @@ export default function NavBar({
             justifyContent: "flex-end",
           }}
         >
-          {(homePage || adminPage) && (
+          {(homePage || adminPage) && isAdmin() && (
             <ColorButton
               variant="contained"
               size="large"
