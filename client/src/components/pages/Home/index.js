@@ -33,7 +33,7 @@ export default function PermanentDrawerLeft({
   setLoadingFiles,
   checkDirectory,
   setCheckDirectory,
-  loadFiles,
+  loadFiles, //test
 }) {
   const [directories, setDirectories] = useState();
   const [nodeIds, setNodeIds] = useState([]);
