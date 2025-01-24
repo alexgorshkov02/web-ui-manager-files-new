@@ -3,6 +3,8 @@ import "./App.css";
 import Home from "./components/pages/Home";
 import Dashboard from "./components/pages/Dashboard";
 import Admin from "./components/pages/Admin";
+import Login from "./components/pages/Login";
+import Signup from "./components/pages/Signup";
 import React, { useState, useEffect } from "react";
 import LoginSignupForm from "./components/pages/LoginSignup";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -12,10 +14,13 @@ import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import { withApollo } from "@apollo/client/react/hoc";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+import RerouteToHomePage from "./components/RerouteToHomePage";
 
 const App = ({ client }) => {
   const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
   const { error, loading, refetch } = useCurrentUserQuery();
+  const [user, setUser] = useState(null);
 
   const [nodeId, setNodeId] = useState("");
   const [pathSegments, setPathSegments] = useState([]);
@@ -35,7 +40,11 @@ const App = ({ client }) => {
 
   const handleLogin = async (status) => {
     try {
-      await refetch();
+      const result = await refetch();
+      if (result) {
+        console.log("UserSet1: ", user);
+        setUser(result.data?.currentUser);
+      }
       resetStates();
       navigate("/");
       setLoggedIn(status);
@@ -54,6 +63,26 @@ const App = ({ client }) => {
       unsubscribe();
     };
   }, [client, loggedIn]);
+
+  //For ProtectedRoute if a page is reloaded
+  useEffect(() => {
+    if (loggedIn) {
+      async function fetchCurrentUser() {
+        try {
+          const result = await refetch();
+          if (result) {
+            setUser(result.data?.currentUser);
+          } else {
+            Cookies.remove("jwt");
+            setLoggedIn(false);
+          }
+        } catch (error) {
+          console.error("Error fetching the current user: ", error);
+        }
+      }
+      fetchCurrentUser();
+    }
+  }, []);
 
   if (loading) return <Loading />;
 
@@ -79,6 +108,7 @@ const App = ({ client }) => {
           <NavBar
             changeLoginState={handleLogin}
             client={client}
+            user={user}
             {...commonProps}
           />
           <Routes>
@@ -97,11 +127,42 @@ const App = ({ client }) => {
                 />
               }
             />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute user={user}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute user={user}>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <RerouteToHomePage user={user}>
+                  <LoginSignupForm />
+                </RerouteToHomePage>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <RerouteToHomePage user={user}>
+                  <LoginSignupForm />
+                </RerouteToHomePage>
+              }
+            />
           </Routes>
         </div>
       )}
+
       {!loggedIn && <LoginSignupForm changeLoginState={handleLogin} />}
       {!loggedIn && error && <div>{error.message}</div>}
     </div>

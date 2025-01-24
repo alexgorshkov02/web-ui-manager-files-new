@@ -24,6 +24,7 @@ const ColorButton = styled(Button)(({ theme }) => ({
 export default function NavBar({
   changeLoginState,
   client,
+  user,
   setNodeId,
   pathSegments,
   setPathSegments,
@@ -32,7 +33,6 @@ export default function NavBar({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-
 
   const handleDashboardPageClick = () => {
     setPathSegments([]);
@@ -74,6 +74,11 @@ export default function NavBar({
     loadFiles();
   }
 
+  const isAdmin = () => {
+    // console.log("user.role: ", user);
+    return user && user.role === "admin";
+  };
+
   return (
     <AppBar
       position="sticky"
@@ -85,11 +90,11 @@ export default function NavBar({
       }}
     >
       <Toolbar>
-          <Breadcrumb
-            pathSegments={pathSegments}
-            onHomeClick={handleHomeClick}
-            onElementClick={handlePathClick}
-          />
+        <Breadcrumb
+          pathSegments={pathSegments}
+          onHomeClick={handleHomeClick}
+          onElementClick={handlePathClick}
+        />
       </Toolbar>
 
       <Toolbar sx={{ justifyContent: "flex-end" }}>
@@ -101,7 +106,7 @@ export default function NavBar({
             justifyContent: "flex-end",
           }}
         >
-          {(homePage || adminPage) && (
+          {(homePage || adminPage) && isAdmin() && (
             <ColorButton
               variant="contained"
               size="large"
@@ -110,7 +115,7 @@ export default function NavBar({
               Dashboard
             </ColorButton>
           )}
-          {(homePage || dashboardPage) && (
+          {(homePage || dashboardPage) && isAdmin() && (
             <ColorButton
               variant="contained"
               size="large"
