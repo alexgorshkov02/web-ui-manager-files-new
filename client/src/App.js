@@ -147,7 +147,7 @@ const App = ({ client }) => {
               path="/login"
               element={
                 <RerouteToHomePage user={user}>
-                  <Login />
+                  <LoginSignupForm />
                 </RerouteToHomePage>
               }
             />
@@ -155,7 +155,7 @@ const App = ({ client }) => {
               path="/signup"
               element={
                 <RerouteToHomePage user={user}>
-                  <Signup />
+                  <LoginSignupForm />
                 </RerouteToHomePage>
               }
             />

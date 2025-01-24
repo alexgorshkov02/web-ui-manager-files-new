@@ -10,6 +10,11 @@ const RerouteToHomePage = ({ user, children }) => {
       navigate("/");
     }
   }, [user, navigate]);
-};
 
+  if (user) {
+    return children;
+  } else {
+    return null;
+  }
+};
 export default RerouteToHomePage;
