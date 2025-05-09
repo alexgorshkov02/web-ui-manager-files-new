@@ -11,14 +11,24 @@ const userSchema = new Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.authType === "local";
+      },
+      select: false,
       minlength: 5,
+    },
+    authType: {
+      type: String,
+      enum: ["local", "ldap"],
+      required: true,
+      default: "local",
     },
     role: {
       type: String,
       enum: ["user", "moderator", "admin"],
       default: "user",
     },
+    lastLogin: { type: Date },
   },
   {
     toJSON: {
@@ -29,7 +39,7 @@ const userSchema = new Schema(
 
 // set up pre-save middleware to create password
 userSchema.pre("save", async function (next) {
-  if (this.isNew || this.isModified("password")) {
+  if ((this.isNew || this.isModified("password")) && this.password) {
     const saltRounds = 10;
     this.password = await bcrypt.hash(this.password, saltRounds);
   }
