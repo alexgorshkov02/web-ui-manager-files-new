@@ -1,6 +1,7 @@
 const JWT = require("jsonwebtoken");
 const { User, AdminParams, Notification } = require("../models");
 const JWT_SECRET = "test";
+const ldap = require("ldapjs");
 
 const {
   directoryTree,
@@ -21,24 +22,244 @@ const sortByDirectories = (notifications) => {
   return sortedNotifications;
 };
 
+async function authenticateUser(username, password) {
+  const authParamNames = ["auth-ldap-server", "auth-ldap-port", "auth-base-dn"];
+
+  const authParams = await AdminParams.find({
+    name: { $in: authParamNames },
+  });
+
+  const authParamMap = {};
+  authParams.forEach((param) => {
+    authParamMap[param.name] = param.value;
+  });
+
+  const paramAuthLdapServer = authParamMap["auth-ldap-server"];
+  const paramAuthLdapPort = authParamMap["auth-ldap-port"];
+  const paramAuthLdapBaseDN = authParamMap["auth-base-dn"];
+
+  const client = ldap.createClient({
+    url: "ldap://" + paramAuthLdapServer + ":" + paramAuthLdapPort,
+  });
+
+  try {
+    const searchOptions = {
+      filter: `(uid=${username})`,
+      scope: "sub",
+      attributes: ["dn"],
+    };
+
+    const userDN = await new Promise((resolve, reject) => {
+      client.search(paramAuthLdapBaseDN, searchOptions, (err, res) => {
+        if (err) return reject(err);
+
+        let foundDN = null;
+
+        res.on("searchEntry", (entry) => {
+          foundDN = entry.objectName || entry.dn;
+        });
+
+        res.on("error", (err) => reject(err));
+
+        res.on("end", (result) => {
+          if (foundDN) {
+            resolve(foundDN);
+          } else {
+            reject(new Error("User DN not found"));
+          }
+        });
+      });
+    });
+
+    console.log("Found user DN:", userDN);
+
+    const userDnString = userDN.toString();
+    // Try to bind as the user
+    await new Promise((resolve, reject) => {
+      client.bind(userDnString, password, (err) => {
+        if (err) {
+          console.error("Bind error:", err); // Include full error object for detail
+          reject(new Error("Invalid credentials"));
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    console.log("User authenticated successfully");
+    return true;
+  } catch (err) {
+    console.error("Error during authentication:", err.message || err);
+    return false;
+  } finally {
+    client.unbind();
+  }
+}
+
+async function getAccessFolders(username) {
+  const paramNames = [
+    "ldap-server",
+    "ldap-port",
+    "bind-dn",
+    "bind-password",
+    "base-dn",
+    "scope",
+    "filter",
+    "attributes",
+  ];
+
+  const params = await AdminParams.find({
+    name: { $in: paramNames },
+  });
+  const paramMap = {};
+  params.forEach((param) => {
+    paramMap[param.name] = param.value;
+  });
+
+  const paramLdapServer = paramMap["ldap-server"];
+  const paramLdapPort = paramMap["ldap-port"];
+  const paramLdapBindDN = paramMap["bind-dn"];
+  const paramLdapBindPassword = paramMap["bind-password"];
+  const paramLdapBaseDN = paramMap["base-dn"];
+  const paramScope = paramMap["scope"];
+  const paramFilter = paramMap["filter"];
+  const paramAttributes = paramMap["attributes"]; 
+  const modParamAttributes = paramAttributes
+    .split(",")
+    .map((attr) => attr.replace(/['"\s]+/g, "").trim());
+  // console.log("modParamAttributes:", modParamAttributes);
+
+  const accessFolders = [];
+
+  const client = ldap.createClient({
+    url: "ldap://" + paramLdapServer + ":" + paramLdapPort, // Use your LDAP server's IP address
+  });
+
+  try {
+    // Bind to the LDAP server
+    await new Promise((resolve, reject) => {
+      client.bind(paramLdapBindDN, paramLdapBindPassword, (err) => {
+        if (err) {
+          reject("Error binding to the LDAP server");
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    // console.log("Bind successful!");
+
+    const searchOptions = {
+      scope: paramScope,
+      filter: paramFilter,
+      attributes: modParamAttributes,
+    };
+
+    // Search the LDAP server
+    await new Promise((resolve, reject) => {
+      client.search(paramLdapBaseDN, searchOptions, (err, res) => {
+        if (err) {
+          reject("Search error");
+        }
+
+        res.on("searchEntry", (entry) => {
+          if (entry.attributes) {
+            const cnAttr = entry.attributes.find((attr) => attr.type === "cn");
+            const memberUidAttr = entry.attributes.find(
+              (attr) => attr.type === "memberUid"
+            );
+
+            // if (cnAttr) {
+            //   console.log("Found subfolder (cn):", cnAttr.values);
+            // }
+
+            // if (memberUidAttr) {
+            //   console.log(
+            //     "Members in subfolder (memberUid):",
+            //     memberUidAttr.values
+            //   );
+            // }
+
+            if (memberUidAttr?.values?.includes(username)) {
+              accessFolders.push(...cnAttr.values);
+            }
+          }
+        });
+
+        res.on("end", () => {
+          console.log("Search completed!");
+          resolve(); // Resolving when the search is finished
+        });
+      });
+    });
+
+    return accessFolders;
+  } catch (err) {
+    console.error("Error:", err);
+    return [];
+  }
+}
+
 const resolvers = {
   Query: {
     // directories: () => directories,
     directories: async (parent, args, context) => {
       if (!context.user) return null;
 
-      const paramNamePathToRootDir = "path-to-root-directory";
-      const directoryParam = await AdminParams.findOne({
-        name: paramNamePathToRootDir,
+      const paramLdapEnabled = "ldap";
+      const ldapEnabled = await AdminParams.findOne({
+        name: paramLdapEnabled,
       });
-      // console.log(directoryParam);
-      if (directoryParam) {
-        // console.log("directoryfromDB.value: ", directoryParam.value);
-        const directories = directoryTree(directoryParam.value);
-        // console.log("directories.children: ", directories.children);
-        return directories;
+      // console.log("ldapEnabled:", typeof ldapEnabled.value, ldapEnabled.value);
+      // console.log("context.user:", context.user.username);
+
+      //TODO: Change to boolean and switcher
+      if (ldapEnabled.value === "true") {
+        // console.log("TEST");
+        const folders = await getAccessFolders(context.user.username);
+        // console.log('Access folders:', folders);
+
+        console.log("folders.length > 0: ", folders.length > 0);
+        if (folders.length > 0) {
+          const paramNamePathToRootDir = "path-to-root-directory";
+          const directoryParam = await AdminParams.findOne({
+            name: paramNamePathToRootDir,
+          });
+          // console.log(directoryParam);
+          if (directoryParam) {
+            // console.log("directoryfromDB.value: ", directoryParam.value);
+            const directories = directoryTree(directoryParam.value);
+            // console.log("directories.children: ", directories.children);
+            // console.log('Access folders:', folders[0]);
+            // console.log("directories: ", directories.children[0].name);
+            directories.children = directories.children.filter((child) =>
+              folders.includes(child.name)
+            );
+            // console.log("directories: ", directories);
+            return directories;
+          } else {
+            return null;
+          }
+        } else {
+          return null;
+        }
       } else {
-        return null;
+        const paramNamePathToRootDir = "path-to-root-directory";
+        const directoryParam = await AdminParams.findOne({
+          name: paramNamePathToRootDir,
+        });
+        // console.log(directoryParam);
+        if (directoryParam) {
+          // console.log("directoryfromDB.value: ", directoryParam.value);
+          const directories = directoryTree(directoryParam.value);
+          // console.log("directories.children: ", directories.children);
+          // console.log('Access folders:', folders[0]);
+          // console.log("directories: ", directories.children[0].name);
+          // console.log("directories: ", directories);
+          return directories;
+        } else {
+          return null;
+        }
       }
     },
     files: async (parent, { directory }, context) => {
@@ -56,25 +277,56 @@ const resolvers = {
       const directoryParam = await AdminParams.findOne({
         name: paramNamePathToRootDir,
       });
-
+      // console.log("directoryParam: ", directoryParam);
       if (directoryParam) {
         let fullPathToDirectory = directoryParam.value;
 
-        if (directory) {
-          console.log("directory: ", directory);
+        if (directory && directory.length !== 0) {
+          // console.log("directory: ", directory);
           fullPathToDirectory = fullPathToDirectory + "\\" + directory;
-        }
+          // console.log("directory: ", directory);
+          // const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
+          // console.log("fullPathToDirectory: ", fullPathToDirectory);
+          const files = getFilesFromSelectedDirectory(
+            directoryParam.value,
+            fullPathToDirectory,
+            directory
+          );
+          // console.log("files: ", files);
+          return files;
+        } else {
+          const paramLdapEnabled = "ldap";
+          const ldapEnabled = await AdminParams.findOne({
+            name: paramLdapEnabled,
+          });
+          // console.log("ldapEnabled:", typeof ldapEnabled.value, ldapEnabled.value);
 
-        // console.log("directory: ", directory);
-        // const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
-        // console.log("fullPathToDirectory: ", fullPathToDirectory);
-        const files = getFilesFromSelectedDirectory(
-          directoryParam.value,
-          fullPathToDirectory,
-          directory
-        );
-        // console.log("files: ", files);
-        return files;
+          //TODO: Change to boolean and switcher
+          if (ldapEnabled.value === "true") {
+            const folders = await getAccessFolders(context.user.username);
+
+            const files = getFilesFromSelectedDirectory(
+              directoryParam.value,
+              fullPathToDirectory,
+              directory
+            );
+            // console.log("files: ", files);
+            // const directories = directoryTree(fullPathToDirectory);
+            files.children = files.children.filter((child) =>
+              folders.includes(child.name)
+            );
+            return files;
+          } else {
+            const files = getFilesFromSelectedDirectory(
+              directoryParam.value,
+              fullPathToDirectory,
+              directory
+            );
+            // console.log("files: ", files);
+            // const directories = directoryTree(fullPathToDirectory);
+            return files;
+          }
+        }
       } else {
         return null;
       }
@@ -133,19 +385,55 @@ const resolvers = {
     login: async (parent, { username, password }, context) => {
       // console.log("context.user in login resolver:", context);
       try {
-        const user = await User.findOne({ username });
-        console.log("user in login resolver: ", user);
-        if (!user) {
-          throw new AuthenticationError("Incorrect credentials");
-        }
-        const correctPassword = await user.isCorrectPassword(password);
-        if (!correctPassword) {
-          throw new AuthenticationError("Incorrect credentials");
-        }
-        const token = JWT.sign({ username, id: user.id }, JWT_SECRET, {
-          expiresIn: "1d", // Expiration time
+        const paramAuthLdapEnabled = "auth-ldap";
+        const authLdapEnabled = await AdminParams.findOne({
+          name: paramAuthLdapEnabled,
         });
-        return { token };
+        // console.log("ldapEnabled:", typeof ldapEnabled.value, ldapEnabled.value);
+
+        //TODO: Change to boolean and switcher
+        if (authLdapEnabled.value === "true") {
+          let authenticatedUser = await authenticateUser(username, password);
+          // console.log("authenticatedUser: ", authenticatedUser);
+          if (authenticatedUser) {
+            let localUser = await User.findOne({ username });
+            if (!localUser) {
+              localUser = await User.create({
+                username,
+                authType: "ldap",
+                lastLogin: new Date(),
+              });
+              console.log(`Created new local user: ${username}`);
+            } else {
+              localUser.lastLogin = new Date();
+              await localUser.save();
+              console.log(`Updated last login for user: ${username}`);
+            }
+
+            const token = JWT.sign({ username, id: localUser.id }, JWT_SECRET, {
+              expiresIn: "1d", // Expiration time
+            });
+
+            // console.log("Token: ", token);
+            return { token };
+          } else {
+            return null;
+          }
+        } else {
+          const user = await User.findOne({ username }).select("+password");
+          console.log("user in login resolver: ", user);
+          if (!user) {
+            throw new AuthenticationError("Incorrect credentials");
+          }
+          const correctPassword = await user.isCorrectPassword(password);
+          if (!correctPassword) {
+            throw new AuthenticationError("Incorrect credentials");
+          }
+          const token = JWT.sign({ username, id: user.id }, JWT_SECRET, {
+            expiresIn: "1d", // Expiration time
+          });
+          return { token };
+        }
       } catch (error) {
         throw new Error("An error occurred while logging in");
       }
@@ -155,7 +443,12 @@ const resolvers = {
       if (existingUser) {
         throw new Error("User already exists");
       } else {
-        const newUser = await User.create({ username, password });
+        const newUser = await User.create({
+          username,
+          password,
+          authType: "local",
+          lastLogin: new Date(),
+        });
         const token = JWT.sign({ username, id: newUser.id }, JWT_SECRET, {
           expiresIn: "1d", // Expiration time
         });
