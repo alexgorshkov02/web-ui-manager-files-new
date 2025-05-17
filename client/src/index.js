@@ -15,14 +15,21 @@ import AuthLink from "./utils/authLink";
 import { onError } from "@apollo/client/link/error";
 import Cookies from "js-cookie";
 import { BrowserRouter } from "react-router-dom";
+const API_HOST = process.env.REACT_APP_API_HOST;
+const API_PORT = process.env.REACT_APP_API_PORT;
 
 const httpLink = createHttpLink({
-  uri: "http://localhost:3001/graphql",
-  credentials: "same-origin",
+  uri: `${API_HOST}:${API_PORT}/graphql`,
+  credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "x-apollo-operation-name": "fallback",
+            "apollo-require-preflight": "true",
+         },
 });
 
 const restLink = new RestLink({
-  uri: "http://localhost:3001",
+  uri: `${API_HOST}:${API_PORT}`,
 });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {

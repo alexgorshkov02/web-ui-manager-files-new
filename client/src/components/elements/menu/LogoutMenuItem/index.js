@@ -1,9 +1,10 @@
 import React from "react";
-import { withApollo } from "@apollo/client/react/hoc";
+import { useApolloClient } from "@apollo/client";
 import MenuItem from "@mui/material/MenuItem";
 import Cookies from "js-cookie";
 
-const LogoutMenuItem = ({ changeLoginState, client }) => {
+const LogoutMenuItem = ({ changeLoginState }) => {
+  const client = useApolloClient();
   const logout = () => {
     Cookies.remove("jwt");
     changeLoginState(false);
@@ -14,4 +15,4 @@ const LogoutMenuItem = ({ changeLoginState, client }) => {
   return <MenuItem onClick={logout}>Logout</MenuItem>;
 };
 
-export default withApollo(LogoutMenuItem);
+export default LogoutMenuItem;

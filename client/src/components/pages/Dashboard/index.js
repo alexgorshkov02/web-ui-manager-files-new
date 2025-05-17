@@ -87,7 +87,9 @@ export default function Dashboard() {
 
   const { refetch: refetchNotifications } = useQuery(GET_NOTIFICATIONS, {
     onCompleted: (completedData) => {
-      setNotifications(completedData.getNotifications);
+      const notifications = completedData?.getNotifications ?? [];
+
+      setNotifications(notifications);
     },
   });
 
@@ -336,7 +338,7 @@ export default function Dashboard() {
               </Grid>
             </StyledPaper>
           </Box>
-          {nodes.map((node) => renderItem(node))}
+          {nodes?.map((node) => renderItem(node))}
         </Box>
       );
     } else return null;

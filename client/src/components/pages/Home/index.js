@@ -17,6 +17,9 @@ import TreeViewDirectories from "../../elements/TreeViewDirectories";
 import DataGridFiles from "../../elements/DataGridFiles";
 import Notification from "../../elements/Notification";
 import Loading from "../../elements/Loading";
+const API_HOST = process.env.REACT_APP_API_HOST;
+const API_PORT = process.env.REACT_APP_API_PORT;
+
 
 const drawerWidth = 240;
 
@@ -50,7 +53,8 @@ export default function PermanentDrawerLeft({
 
   const { error: errorGetDirectories } = useQuery(GET_DIRECTORIES, {
     onCompleted: (completedData) => {
-      setDirectories(completedData.directories.children);
+      const directories = completedData?.directories?.children ?? [];
+      setDirectories(directories);
     },
   });
 
@@ -61,11 +65,11 @@ export default function PermanentDrawerLeft({
   const { error: errorFetchFiles, refetch: refetchFiles } = useQuery(
     GET_FILES,
     {
+      skip: !selectedDirectory,
       variables: { directory: selectedDirectory },
       onCompleted: (completedData) => {
-        if (completedData.files) {
-          setSelectedFiles(completedData.files.children);
-        }
+        const files = completedData?.files?.children ?? [];
+        setSelectedFiles(files);
       },
     }
   );
@@ -78,7 +82,8 @@ export default function PermanentDrawerLeft({
     useQuery(GET_NOTIFICATION, {
       variables: { directory: selectedDirectory },
       onCompleted: (completedData) => {
-        setNotification(completedData.getNotifications?.value);
+        const notification = completedData?.getNotifications?.value ?? "";
+        setNotification(notification);
       },
     });
 
@@ -191,10 +196,10 @@ export default function PermanentDrawerLeft({
 
   async function handleDownloadFile() {
     if (fileName) {
-      const formattedPath = pathSegments.join("\\") + "\\" + fileName;
+      const formattedPath = [...pathSegments, fileName].join("/");
 
       try {
-        const response = await fetch("http://localhost:3001/download", {
+        const response = await fetch(`${API_HOST}:${API_PORT}/download`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -237,7 +242,7 @@ export default function PermanentDrawerLeft({
       loadFiles();
     } else if (typename === "file") {
       try {
-        const response = await fetch("http://localhost:3001/download", {
+        const response = await fetch(`${API_HOST}:${API_PORT}/download`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -258,14 +263,20 @@ export default function PermanentDrawerLeft({
           console.log("File opened in a new browser tab");
           handleCloseMenu();
         } else {
-          const delimiter = "\\";
-          const lastDelimiterIndex = relativePath.lastIndexOf(delimiter);
           let fileName;
-          if (lastDelimiterIndex !== -1) {
-            fileName = relativePath.substring(lastDelimiterIndex + 1);
+
+          const lastSlashIndex = Math.max(
+            relativePath.lastIndexOf("/"),
+            relativePath.lastIndexOf("\\")
+          );
+          if (lastSlashIndex !== -1) {
+            fileName = relativePath.substring(lastSlashIndex + 1);
             console.log("fileName", fileName);
           } else {
-            console.error("Delimiter not found in the string");
+            console.error(
+              "No path delimiter found in relativePath:",
+              relativePath
+            );
           }
           const a = document.createElement("a");
           a.href = blobUrl;

@@ -6,21 +6,26 @@ const fs = require("fs");
 // const path = "C:\\testFolder\\";
 // const path1 = "C:\\testFolder\\folder5\\files";
 
-function directoryTree(path) {
+function directoryTree(basePath) {
+  console.log("directoryTree input:", basePath);
+  if (!fs.existsSync(basePath)) {
+    return null;
+  }
+
   const tree = dirTree(
-    path,
+    basePath,
     { attributes: ["type"], extensions: /\.txt$/ },
     null,
     (item, currentPath, stats) => {
       // item.path = PATH.basename(currentPath);
-      item.relativePath = PATH.relative(path, currentPath);
+      item.relativePath = PATH.relative(basePath, currentPath);
       // console.log(item);
       // console.log(PATH);
       // console.log(stats);
     }
   );
   // console.log("tree: ", tree);
-  return tree;
+  return tree || null;
 }
 
 // Converts ctime to a human-readable date string
@@ -42,39 +47,93 @@ function formatFileSize(bytes) {
   return (bytes / Math.pow(1024, i)).toFixed(2) + " " + sizes[i];
 }
 
+// const getFilesFromSelectedDirectory = () => ({
+//   children: [{ name: "file1.txt" }, { name: "file2.txt" }],
+// });
+
 function getFilesFromSelectedDirectory(rootDir, dirPath) {
-  // console.log(rootDir, dirPath);
-  const items = fs.readdirSync(dirPath);
+//   console.log("[DEBUG] fs.existsSync check:", dirPath, "=>", fs.existsSync(dirPath));
+// console.log("[DEBUG] process.cwd():", process.cwd());
+// console.log("[DEBUG] __dirname:", __dirname);
+// console.log("[DEBUG] __filename:", __filename);
+// console.log("[DEBUG] Running as user:", process.getuid?.() ?? "N/A");
+
+// try {
+//   fs.writeFileSync("/srv/shared/testFolderLinux/__test.txt", "test");
+//   console.log("[DEBUG] Successfully wrote test file");
+// } catch (err) {
+//   console.error("[ERROR] Cannot write test file:", err);
+// }
+
+// fs.existsSync('/srv/app-data/testFolderLinux') // should return true
+
+  // Prevent scanning entire filesystem root
+  const unsafeRoots = ['/', 'C:\\', 'C:/'];
+  if (unsafeRoots.includes(dirPath) || unsafeRoots.includes(rootDir)) {
+    console.warn("[SECURITY] Refusing to scan root directory:", dirPath);
+    return null;
+  }
+
+  console.log("[INFO] Requested scan:");
+  console.log("  Root Dir  :", rootDir);
+  console.log("  Dir Path  :", dirPath);
+
+  // Normalize and resolve full paths
+  const normalizedRoot = PATH.resolve(rootDir);
+  const normalizedDir = PATH.resolve(dirPath);
+
+  console.log("  Normalized Root:", normalizedRoot);
+  console.log("  Normalized Path:", normalizedDir);
+
+  // Check existence
+  if (!fs.existsSync(normalizedDir)) {
+    console.warn("[WARN] Directory does not exist:", normalizedDir);
+    return null;
+  }
+
+  let items;
+  try {
+    items = fs.readdirSync(normalizedDir);
+  } catch (err) {
+    console.error("[ERROR] Failed to read directory:", normalizedDir, err);
+    return null;
+  }
 
   const tree = {
-    name: PATH.basename(dirPath),
-    relativePath: PATH.relative(rootDir, dirPath),
+    name: PATH.basename(normalizedDir),
+    relativePath: PATH.relative(normalizedRoot, normalizedDir),
     size: 0,
     type: "directory",
     ctime: null,
     children: [],
   };
 
-  items.forEach((item) => {
-    const itemPath = PATH.join(dirPath, item);
-    const itemStats = fs.statSync(itemPath);
+  for (const item of items) {
+    const itemPath = PATH.join(normalizedDir, item);
+    let itemStats;
+
+    try {
+      itemStats = fs.statSync(itemPath);
+    } catch (err) {
+      console.warn("[WARN] Could not stat:", itemPath, err);
+      continue;
+    }
 
     const itemInfo = {
       name: item,
-      relativePath: PATH.relative(rootDir, itemPath),
+      relativePath: PATH.relative(normalizedRoot, itemPath),
       size: itemStats.isFile() ? formatFileSize(itemStats.size) : null,
       type: itemStats.isFile() ? "file" : "directory",
       ctime: formatCtime(itemStats.ctime),
     };
 
     if (itemStats.isDirectory()) {
-      itemInfo.children = getFilesFromSelectedDirectory(rootDir, itemPath);
+      itemInfo.children = getFilesFromSelectedDirectory(normalizedRoot, itemPath);
     }
 
     tree.children.push(itemInfo);
-  });
+  }
 
-  // console.log("tree: ", tree);
   return tree;
 }
 

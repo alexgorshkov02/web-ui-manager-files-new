@@ -1,4 +1,5 @@
 //import logo from './logo.svg';
+import { useApolloClient } from "@apollo/client";
 import "./App.css";
 import Home from "./components/pages/Home";
 import Dashboard from "./components/pages/Dashboard";
@@ -11,15 +12,22 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/elements/NavBar";
 import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
-import { withApollo } from "@apollo/client/react/hoc";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RerouteToHomePage from "./components/RerouteToHomePage";
 
-const App = ({ client }) => {
+const App = () => {
+  const client = useApolloClient();
+
   const [loggedIn, setLoggedIn] = useState(!!Cookies.get("jwt"));
-  const { error, loading, refetch } = useCurrentUserQuery();
+  const { error, loading, refetch } = useCurrentUserQuery({
+    skip: !loggedIn, // only run query if logged in
+    fetchPolicy: "network-only",
+    onCompleted: (data) => {
+    console.log("currentUser query completed from [ComponentName]", data ?? {});
+  },
+  });
   const [user, setUser] = useState(null);
 
   const [nodeId, setNodeId] = useState("");
@@ -42,7 +50,7 @@ const App = ({ client }) => {
     try {
       const result = await refetch();
       if (result) {
-        console.log("UserSet1: ", user);
+        // console.log("UserSet: ", result.data?.currentUser);
         setUser(result.data?.currentUser);
       }
       resetStates();
@@ -82,7 +90,7 @@ const App = ({ client }) => {
       }
       fetchCurrentUser();
     }
-  }, []);
+  }, [loggedIn, refetch]);
 
   if (loading) return <Loading />;
 
@@ -169,4 +177,4 @@ const App = ({ client }) => {
   );
 };
 
-export default withApollo(App);
+export default App;

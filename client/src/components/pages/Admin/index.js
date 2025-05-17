@@ -18,7 +18,8 @@ export default function Admin() {
 
   const { error: errorGetAdminParams, refetch } = useQuery(GET_ADMIN_PARAMS, {
     onCompleted: (completedData) => {
-      setAdminParam(completedData.getAdminParams);
+      const params = completedData?.getAdminParams ?? [];
+      setAdminParam(params);
     },
   });
 

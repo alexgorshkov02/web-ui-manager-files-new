@@ -10,17 +10,17 @@ export default function Breadcrumb({
   return (
     <div>
       <span onClick={onHomeClick} style={{ cursor: "pointer" }}>
-        {pathSegments.length === 0 ||
-        (pathSegments.length === 1 && pathSegments[0] === "")
+        {pathSegments?.length === 0 ||
+        (pathSegments?.length === 1 && pathSegments[0] === "")
           ? "Home"
           : "Home\\"}
       </span>
-      {pathSegments.map((segment, index) => (
+      {pathSegments?.map((segment, index) => (
         <Fragment key={index}>
           <span onClick={onElementClick} style={{ cursor: "pointer" }}>
             {segment}
           </span>
-          {index < pathSegments.length - 1 && <span>{"\\"}</span>}
+          {index < pathSegments?.length - 1 && <span>{"\\"}</span>}
         </Fragment>
       ))}
     </div>

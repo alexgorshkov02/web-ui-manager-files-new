@@ -9,6 +9,7 @@ const AuthLink = (operation, next) => {
       headers: {
         ...contextValue.headers,
         Authorization: `Bearer ${token}`,
+        'x-apollo-operation-name': 'safe-request',
       },
     }));
     // console.log("AuthLink, operation (client_part): ", operation);
