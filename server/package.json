@@ -13,10 +13,13 @@
     "@graphql-tools/utils": "^10.0.5",
     "bcrypt": "^5.1.1",
     "directory-tree": "^3.5.1",
+    "dotenv": "^16.5.0",
     "graphql": "^16.7.1",
     "graphql-tools": "^9.0.0",
     "jsonwebtoken": "^9.0.1",
     "ldapjs": "^3.0.7",
+    "mime-types": "^3.0.1",
+    "mongoose": "^8.14.3",
     "path": "^0.12.7"
   }
 }

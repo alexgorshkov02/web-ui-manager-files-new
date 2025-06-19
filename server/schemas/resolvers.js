@@ -1,7 +1,13 @@
 const JWT = require("jsonwebtoken");
 const { User, AdminParams, Notification } = require("../models");
-const JWT_SECRET = "test";
 const ldap = require("ldapjs");
+const path = require("path");
+
+const JWT_SECRET = process.env.JWT_SECRET || "";
+if (!JWT_SECRET) {
+  console.error("JWT_SECRET is not set in environment variables!");
+  process.exit(1);  //stop app if secret is not set
+}
 
 const {
   directoryTree,
@@ -96,6 +102,8 @@ async function authenticateUser(username, password) {
   }
 }
 
+// const getAccessFolders = async () => ["subdir1", "subdir2"];
+
 async function getAccessFolders(username) {
   const paramNames = [
     "ldap-server",
@@ -123,7 +131,7 @@ async function getAccessFolders(username) {
   const paramLdapBaseDN = paramMap["base-dn"];
   const paramScope = paramMap["scope"];
   const paramFilter = paramMap["filter"];
-  const paramAttributes = paramMap["attributes"]; 
+  const paramAttributes = paramMap["attributes"];
   const modParamAttributes = paramAttributes
     .split(",")
     .map((attr) => attr.replace(/['"\s]+/g, "").trim());
@@ -204,6 +212,7 @@ const resolvers = {
   Query: {
     // directories: () => directories,
     directories: async (parent, args, context) => {
+      // return null;
       if (!context.user) return null;
 
       const paramLdapEnabled = "ldap";
@@ -214,29 +223,46 @@ const resolvers = {
       // console.log("context.user:", context.user.username);
 
       //TODO: Change to boolean and switcher
-      if (ldapEnabled.value === "true") {
+      if (ldapEnabled && ldapEnabled.value === "true") {
         // console.log("TEST");
         const folders = await getAccessFolders(context.user.username);
         // console.log('Access folders:', folders);
 
-        console.log("folders.length > 0: ", folders.length > 0);
-        if (folders.length > 0) {
+        console.log("folders.length > 0: ", folders?.length > 0);
+        if (folders && folders.length > 0) {
           const paramNamePathToRootDir = "path-to-root-directory";
           const directoryParam = await AdminParams.findOne({
             name: paramNamePathToRootDir,
           });
+
+          if (
+            directoryParam?.value === "/" ||
+            directoryParam?.value === "C:/"
+          ) {
+            console.warn("Refusing to scan root directory.");
+            return null;
+          }
+
           // console.log(directoryParam);
           if (directoryParam) {
             // console.log("directoryfromDB.value: ", directoryParam.value);
-            const directories = directoryTree(directoryParam.value);
-            // console.log("directories.children: ", directories.children);
-            // console.log('Access folders:', folders[0]);
-            // console.log("directories: ", directories.children[0].name);
-            directories.children = directories.children.filter((child) =>
-              folders.includes(child.name)
-            );
-            // console.log("directories: ", directories);
-            return directories;
+            console.log("Path to directoryTree:", directoryParam.value);
+            const resolvedPath = path.resolve(directoryParam.value);
+
+            try {
+              const directories = directoryTree(resolvedPath);
+              // console.log("directories.children: ", directories.children);
+              // console.log('Access folders:', folders[0]);
+              // console.log("directories: ", directories.children[0].name);
+              directories.children = directories.children.filter((child) =>
+                folders.includes(child.name)
+              );
+              // console.log("directories: ", directories);
+              return directories;
+            } catch (error) {
+              console.error("Error building directory tree:", error);
+              return null;
+            }
           } else {
             return null;
           }
@@ -248,21 +274,40 @@ const resolvers = {
         const directoryParam = await AdminParams.findOne({
           name: paramNamePathToRootDir,
         });
+
+        if (directoryParam?.value === "/" || directoryParam?.value === "C:/") {
+          console.warn("Refusing to scan root directory.");
+          return null;
+        }
+
         // console.log(directoryParam);
         if (directoryParam) {
           // console.log("directoryfromDB.value: ", directoryParam.value);
-          const directories = directoryTree(directoryParam.value);
-          // console.log("directories.children: ", directories.children);
-          // console.log('Access folders:', folders[0]);
-          // console.log("directories: ", directories.children[0].name);
-          // console.log("directories: ", directories);
-          return directories;
+          console.log("Path to directoryTree:", directoryParam.value);
+          const resolvedPath = path.resolve(directoryParam.value);
+          try {
+            const directories = directoryTree(resolvedPath);
+            // console.log("directories.children: ", directories.children);
+            // console.log('Access folders:', folders[0]);
+            // console.log("directories: ", directories.children[0].name);
+            // console.log("directories: ", directories);
+            return directories;
+          } catch (error) {
+            console.error("Error building directory tree:", error);
+            return null;
+          }
         } else {
           return null;
         }
       }
     },
     files: async (parent, { directory }, context) => {
+      // return null;
+      if (directory === undefined || directory === null) {
+        console.warn("No directory provided, using root fallback");
+        // Proceed with root folder loading logic
+      }
+
       console.log("directory in getFiles resolver : ", directory);
       // In this case, we'll pretend there is no data when
       // we're not logged in. Another option would be to
@@ -280,20 +325,34 @@ const resolvers = {
       // console.log("directoryParam: ", directoryParam);
       if (directoryParam) {
         let fullPathToDirectory = directoryParam.value;
+        console.log("fullPathToDirectory:", fullPathToDirectory);
 
         if (directory && directory.length !== 0) {
           // console.log("directory: ", directory);
-          fullPathToDirectory = fullPathToDirectory + "\\" + directory;
+          fullPathToDirectory = path.join(fullPathToDirectory, directory);
           // console.log("directory: ", directory);
           // const fullPathToDirectory = directoryParam.value + "\\\\" + directory;
           // console.log("fullPathToDirectory: ", fullPathToDirectory);
-          const files = getFilesFromSelectedDirectory(
-            directoryParam.value,
-            fullPathToDirectory,
-            directory
-          );
-          // console.log("files: ", files);
-          return files;
+
+          try {
+            const files = getFilesFromSelectedDirectory(
+              directoryParam.value,
+              fullPathToDirectory,
+              directory
+            );
+
+            if (!files) {
+              // Optionally log and return a structured error or null
+              console.warn("Directory path invalid or unreadable");
+              return null;
+            } else {
+              console.log("files: ", files);
+              return files;
+            }
+          } catch (err) {
+            console.error("getting files failed:", err);
+            return null;
+          }
         } else {
           const paramLdapEnabled = "ldap";
           const ldapEnabled = await AdminParams.findOne({
@@ -302,7 +361,7 @@ const resolvers = {
           // console.log("ldapEnabled:", typeof ldapEnabled.value, ldapEnabled.value);
 
           //TODO: Change to boolean and switcher
-          if (ldapEnabled.value === "true") {
+          if (ldapEnabled && ldapEnabled.value === "true") {
             const folders = await getAccessFolders(context.user.username);
 
             const files = getFilesFromSelectedDirectory(
@@ -310,21 +369,39 @@ const resolvers = {
               fullPathToDirectory,
               directory
             );
-            // console.log("files: ", files);
-            // const directories = directoryTree(fullPathToDirectory);
-            files.children = files.children.filter((child) =>
-              folders.includes(child.name)
-            );
-            return files;
+
+            if (!files) {
+              // Optionally log and return a structured error or null
+              console.warn("Directory path invalid or unreadable:");
+              return null;
+            } else {
+              // console.log("files: ", files);
+              // const directories = directoryTree(fullPathToDirectory);
+              files.children = files.children.filter((child) =>
+                folders.includes(child.name)
+              );
+              return files;
+            }
           } else {
-            const files = getFilesFromSelectedDirectory(
-              directoryParam.value,
-              fullPathToDirectory,
-              directory
-            );
-            // console.log("files: ", files);
-            // const directories = directoryTree(fullPathToDirectory);
-            return files;
+            try {
+              const files = getFilesFromSelectedDirectory(
+                directoryParam.value,
+                fullPathToDirectory,
+                directory
+              );
+
+              if (!files) {
+                // Optionally log and return a structured error or null
+                console.warn("Directory path invalid or unreadable");
+                return null;
+              } else {
+                console.log("files: ", files);
+                return files;
+              }
+            } catch (err) {
+              console.error("getting files failed:", err);
+              return null;
+            }
           }
         }
       } else {
@@ -392,7 +469,7 @@ const resolvers = {
         // console.log("ldapEnabled:", typeof ldapEnabled.value, ldapEnabled.value);
 
         //TODO: Change to boolean and switcher
-        if (authLdapEnabled.value === "true") {
+        if (authLdapEnabled && authLdapEnabled.value === "true") {
           let authenticatedUser = await authenticateUser(username, password);
           // console.log("authenticatedUser: ", authenticatedUser);
           if (authenticatedUser) {

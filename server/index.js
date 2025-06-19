@@ -1,9 +1,12 @@
+require("dotenv").config();
+const fs = require("fs");
+const http = require("http");
+const https = require("https");
+const express = require("express");
+const mime = require("mime-types");
 const { ApolloServer } = require("@apollo/server");
-const { startStandaloneServer } = require("@apollo/server/standalone");
 const { expressMiddleware } = require("@apollo/server/express4");
 const cors = require("cors");
-const express = require("express");
-const bodyParser = require("body-parser");
 const path = require("path");
 const { makeExecutableSchema } = require("@graphql-tools/schema");
 const { authDirective } = require("./utils/auth");
@@ -11,89 +14,91 @@ const { typeDefs, resolvers } = require("./schemas/index");
 const db = require("./config/connection");
 const { User, AdminParams } = require("./models");
 const { GraphQLError } = require("graphql");
-const {
-  directoryTree,
-  getFilesFromSelectedDirectory,
-} = require("./utils/directoryTree");
-// const { printSchema } = require("graphql/utilities");
-
 const JWT = require("jsonwebtoken");
-const JWT_SECRET = "test";
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Generate the authDirective configuration
+const JWT_SECRET = process.env.JWT_SECRET || "";
+if (!JWT_SECRET) {
+  console.error("JWT_SECRET is not set in environment variables!");
+  process.exit(1);  //stop app if secret is not set
+}
+
+// === Configuration ===
+const NODE_ENV = process.env.NODE_ENV || "development";
+const PROTOCOL = NODE_ENV === "production" ? "https" : "http";
+const API_HOST = process.env.APP_API_HOST || "localhost";
+const API_SERVER_PORT = process.env.APP_API_SERVER_PORT || "3001";
+const API_CLIENT_PORT = process.env.APP_API_CLIENT_PORT || "3000";
+
+// Build client origin URI for CORS with optional port
+const isDefaultClientPort =
+  (PROTOCOL === "http" && API_CLIENT_PORT === "80") ||
+  (PROTOCOL === "https" && API_CLIENT_PORT === "443");
+
+const clientPortSegment = !isDefaultClientPort ? `:${API_CLIENT_PORT}` : "";
+const origin = `${PROTOCOL}://${API_HOST}${clientPortSegment}`;
+
+console.log("API_HOST:", API_HOST);
+console.log("API_SERVER_PORT:", API_SERVER_PORT);
+console.log("API_CLIENT_PORT:", API_CLIENT_PORT);
+console.log("Allowed CORS origin:", origin);
+
+app.use(
+  cors({
+    origin,
+    credentials: true,
+  })
+);
+
+// Handle OPTIONS preflight requests for all routes
+app.options("*", cors());
+
+app.use(express.json());
+
 const { authDirectiveTypeDefs, authDirectiveTransformer } =
   authDirective("auth");
 
-// Create the executable schema
 let executableSchema = makeExecutableSchema({
   typeDefs: [authDirectiveTypeDefs, typeDefs],
   resolvers,
 });
-
-// Apply the authDirectiveTransformer to the schema
 executableSchema = authDirectiveTransformer(executableSchema);
-// console.log(printSchema(executableSchema))
 
-db.once("open", async () => {
-  const server = new ApolloServer({
-    schema: executableSchema,
-  });
+const server = new ApolloServer({
+  schema: executableSchema,
+  csrfPrevention: false,
+});
 
-  // Start the Apollo Server using startStandaloneServer
-  const { url } = await startStandaloneServer(server);
+(async () => {
+  await server.start();
 
-  console.log(`Server ready at ${url}`);
-
-  app.use(bodyParser.json());
   app.use(
     "/graphql",
-    cors(),
     expressMiddleware(server, {
       context: async ({ req }) => {
-        const authorization = req.headers.authorization;
-        // console.log("authorization: ", authorization);
-        if (typeof authorization !== typeof undefined) {
-          const search = "Bearer";
-          const regEx = new RegExp(search, "ig");
-          const token = authorization.replace(regEx, "").trim();
+        const authHeader = req.headers.authorization || "";
+        const token = authHeader.replace(/^Bearer\s+/i, "").trim();
 
+        if (token) {
           try {
-            const decodedToken = JWT.verify(token, JWT_SECRET);
-            // console.log("decodedToken: ", decodedToken);
-            if (decodedToken) {
-              const user = await User.findByPk(decodedToken.id);
-              // console.log("user (server): ", user);
-              if (user) {
-                // Return the user in the context object
-                return Object.assign({}, req, { user });
-              }
-            }
+            const decoded = JWT.verify(token, JWT_SECRET);
+            const user = await User.findByPk(decoded.id);
+            return { user };
           } catch (err) {
-            // Handle token verification or user fetching errors
-            console.error("Error verifying token:", err);
+            console.error("Invalid token:", err.message);
             throw new GraphQLError("Invalid or expired token", {
-              extensions: {
-                code: "UNAUTHENTICATED",
-              },
+              extensions: { code: "UNAUTHENTICATED" },
             });
           }
         }
-        // Default context object when there's no valid token or user
+
         return { user: null };
       },
     })
   );
-
-  app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    next();
-  });
-
+  
+  // REST route for downloading files
   app.post("/download", async (req, res) => {
     try {
       const { pathToFile } = req.body;
@@ -103,11 +108,7 @@ db.once("open", async () => {
       });
 
       let fullPathToDirectory = directoryParam?.value;
-
-      if (pathToFile && fullPathToDirectory) {
-        // console.log("directory: ", directory);
-        fullPathToDirectory = fullPathToDirectory + "\\" + pathToFile;
-      } else {
+      if (!pathToFile || !fullPathToDirectory) {
         console.log("Incorrect path to the file");
         const message = "Incorrect path to the file";
         throw new Error(message, {
@@ -115,14 +116,21 @@ db.once("open", async () => {
         });
       }
 
-      console.log("fullPathToDirectory: ", fullPathToDirectory);
+      const resolvedPath = path.resolve(fullPathToDirectory, pathToFile);
+      console.log("fullPathToDirectory: ", resolvedPath);
 
-      res.sendFile(fullPathToDirectory, (error) => {
+      // Get content type based on extension only
+      const extMime = mime.lookup(resolvedPath) || "application/octet-stream";
+
+      // Set Content-Type header explicitly
+      res.setHeader("Content-Type", extMime);
+
+      res.sendFile(resolvedPath, (error) => {
         if (error) {
           console.error("Error sending file:", error.message);
           res.status(500).send("Internal Server Error");
         } else {
-          console.log("File sent successfully");
+          console.log("File sent successfully with Content-Type:", extMime);
         }
       });
     } catch (error) {
@@ -130,12 +138,56 @@ db.once("open", async () => {
       res.status(500).json({ error: "Failed to download file" });
     }
   });
+  
+  // Serve frontend from React build
+  app.use(express.static(path.join(__dirname, "client", "build")));
 
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/public/index.html"));
+    res.sendFile(path.join(__dirname, "client", "build", "index.html"));
   });
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server listening at: ${url}`);
+db.once("open", () => {
+    if (NODE_ENV === "production") {
+      const sslOptions = {
+        key: fs.readFileSync(path.join(__dirname, "cert", "key.pem")),
+        cert: fs.readFileSync(path.join(__dirname, "cert", "cert.pem")),
+      };
+
+      https.createServer(sslOptions, app).listen(API_SERVER_PORT, () => {
+        console.log(
+          `Server running at https://${API_HOST}:${API_SERVER_PORT}/graphql`
+        );
+      });
+
+      // Skip redirect for OPTIONS to allow CORS preflight to work
+      http
+        .createServer((req, res) => {
+          if (req.method === "OPTIONS") {
+            res.writeHead(204);
+            res.end();
+            return;
+          }
+
+          const newHost = req.headers.host.replace(
+            /:\d+/,
+            `:${API_SERVER_PORT}`
+          );
+          res.writeHead(301, {
+            Location: `https://${newHost}${req.url}`,
+          });
+          res.end();
+        })
+        .listen(80, () => {
+          console.log(
+            `HTTP redirector running on http://${API_HOST}:80 -> https://${API_HOST}:${API_SERVER_PORT}`
+          );
+        });
+    } else {
+      app.listen(API_SERVER_PORT, () => {
+        console.log(
+          `Server running at http://${API_HOST}:${API_SERVER_PORT}/graphql`
+        );
+      });
+    }
   });
-});
+})();
