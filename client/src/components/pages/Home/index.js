@@ -17,8 +17,19 @@ import TreeViewDirectories from "../../elements/TreeViewDirectories";
 import DataGridFiles from "../../elements/DataGridFiles";
 import Notification from "../../elements/Notification";
 import Loading from "../../elements/Loading";
-const API_HOST = process.env.REACT_APP_API_HOST;
-const API_PORT = process.env.REACT_APP_API_PORT;
+
+// === Configuration ===
+const NODE_ENV = process.env.NODE_ENV || "development";
+const API_PROTOCOL = NODE_ENV === "production" ? "https" : "http";
+const API_HOST = process.env.REACT_APP_API_HOST || "localhost";
+const API_PORT = process.env.REACT_APP_API_PORT || 3001;
+
+const isDefaultPort =
+  (API_PROTOCOL === "http" && API_PORT === "80") ||
+  (API_PROTOCOL === "https" && API_PORT === "443");
+
+const portSegment = API_PORT && !isDefaultPort ? `:${API_PORT}` : "";
+const BASE_URI = `${API_PROTOCOL}://${API_HOST}${portSegment}`;
 
 
 const drawerWidth = 240;
@@ -38,6 +49,22 @@ export default function PermanentDrawerLeft({
   setCheckDirectory,
   loadFiles,
 }) {
+  const textLikeMimeTypes = [
+    "text/plain",
+    "text/html",
+    "text/css",
+    "text/javascript",
+    "application/javascript",
+    "application/json",
+    "application/xml",
+    "text/xml",
+    "application/xhtml+xml",
+    "application/rtf",
+    "text/csv",
+    "application/x-sh",
+    "application/sql",
+  ];
+
   const [directories, setDirectories] = useState();
   const [nodeIds, setNodeIds] = useState([]);
   const [fileName, setFileName] = useState();
@@ -199,13 +226,16 @@ export default function PermanentDrawerLeft({
       const formattedPath = [...pathSegments, fileName].join("/");
 
       try {
-        const response = await fetch(`${API_HOST}:${API_PORT}/download`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ pathToFile: formattedPath }),
-        });
+        const response = await fetch(
+          `${BASE_URI}/download`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ pathToFile: formattedPath }),
+          }
+        );
         if (!response.ok) {
           throw new Error("Failed to download file");
         }
@@ -242,46 +272,47 @@ export default function PermanentDrawerLeft({
       loadFiles();
     } else if (typename === "file") {
       try {
-        const response = await fetch(`${API_HOST}:${API_PORT}/download`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ pathToFile: relativePath }),
-        });
+        const response = await fetch(
+          `${API_PROTOCOL}://${API_HOST}:${API_PORT}/download`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ pathToFile: relativePath }),
+          }
+        );
         if (!response.ok) {
           throw new Error("Failed to open file in browser");
         }
 
-        const blobResponse = await response.blob();
         const contentType = response.headers.get("content-type");
+        const blobResponse = await response.blob();
         const blob = new Blob([blobResponse], { type: contentType });
         const blobUrl = URL.createObjectURL(blob);
 
-        if (contentType && contentType.startsWith("text/")) {
+        if (contentType && textLikeMimeTypes.includes(contentType)) {
+          // Open text-like files in new tab
           window.open(blobUrl, "_blank");
           console.log("File opened in a new browser tab");
-          handleCloseMenu();
         } else {
+          // For other files, trigger download
           let fileName;
-
           const lastSlashIndex = Math.max(
             relativePath.lastIndexOf("/"),
             relativePath.lastIndexOf("\\")
           );
           if (lastSlashIndex !== -1) {
             fileName = relativePath.substring(lastSlashIndex + 1);
-            console.log("fileName", fileName);
           } else {
-            console.error(
-              "No path delimiter found in relativePath:",
-              relativePath
+            fileName = relativePath;
+            console.warn(
+              "No path delimiter found in relativePath, using full path as filename"
             );
           }
           const a = document.createElement("a");
           a.href = blobUrl;
           a.download = fileName;
-
           document.body.appendChild(a);
           a.click();
           a.remove();

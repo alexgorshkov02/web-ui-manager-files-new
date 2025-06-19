@@ -15,40 +15,48 @@ import AuthLink from "./utils/authLink";
 import { onError } from "@apollo/client/link/error";
 import Cookies from "js-cookie";
 import { BrowserRouter } from "react-router-dom";
-const API_HOST = process.env.REACT_APP_API_HOST;
-const API_PORT = process.env.REACT_APP_API_PORT;
 
+// === Configuration ===
+const NODE_ENV = process.env.NODE_ENV || "development";
+const API_PROTOCOL = NODE_ENV === "production" ? "https" : "http";
+const API_HOST = process.env.REACT_APP_API_HOST || "localhost";
+const API_PORT = process.env.REACT_APP_API_PORT || 3001;
+
+// Build URI with optional port
+const isDefaultPort =
+  (API_PROTOCOL === "http" && API_PORT === "80") ||
+  (API_PROTOCOL === "https" && API_PORT === "443");
+
+const portSegment = API_PORT && !isDefaultPort ? `:${API_PORT}` : "";
+const BASE_URI = `${API_PROTOCOL}://${API_HOST}${portSegment}`;
+
+// === Apollo Links ===
 const httpLink = createHttpLink({
-  uri: `${API_HOST}:${API_PORT}/graphql`,
+  uri: `${BASE_URI}/graphql`,
   credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "x-apollo-operation-name": "fallback",
-            "apollo-require-preflight": "true",
-         },
+  headers: {
+    "Content-Type": "application/json",
+    "x-apollo-operation-name": "fallback",
+    "apollo-require-preflight": "true",
+  },
 });
 
 const restLink = new RestLink({
-  uri: `${API_HOST}:${API_PORT}`,
+  uri: BASE_URI,
 });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
-    graphQLErrors.map(({ message, locations, path, extensions }) => {
-      // console.log("extensions.code: ", extensions.code);
-      console.log(
-        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-      );
-
-      if (extensions.code === "UNAUTHENTICATED") {
+    graphQLErrors.forEach(({ message, locations, path, extensions }) => {
+      console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+      if (extensions?.code === "UNAUTHENTICATED") {
         Cookies.remove("jwt");
         client.clearStore();
       }
-      return null;
     });
   }
   if (networkError) {
-    console.log(`[Netwok error]: ${networkError}`);
+    console.error(`[Network error]: ${networkError}`);
   }
 });
 
@@ -58,6 +66,7 @@ const client = new ApolloClient({
   connectToDevTools: true,
 });
 
+// === Render ===
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <BrowserRouter>

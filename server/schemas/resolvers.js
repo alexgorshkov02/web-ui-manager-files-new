@@ -1,8 +1,13 @@
 const JWT = require("jsonwebtoken");
 const { User, AdminParams, Notification } = require("../models");
-const JWT_SECRET = "test";
 const ldap = require("ldapjs");
 const path = require("path");
+
+const JWT_SECRET = process.env.JWT_SECRET || "";
+if (!JWT_SECRET) {
+  console.error("JWT_SECRET is not set in environment variables!");
+  process.exit(1);  //stop app if secret is not set
+}
 
 const {
   directoryTree,
