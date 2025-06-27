@@ -532,8 +532,10 @@ const resolvers = {
     },
     getNotifications: async () => {
       try {
+        console.log("Received request for getNotifications");
         const notifications = await Notification.find();
         const sortedNotifications = sortByDirectories(notifications);
+        console.log("Sending notifications:", sortedNotifications);
         return sortedNotifications;
       } catch (error) {
         throw new Error("Error fetching notifications");

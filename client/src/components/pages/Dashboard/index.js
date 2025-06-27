@@ -88,8 +88,12 @@ export default function Dashboard() {
   const { refetch: refetchNotifications } = useQuery(GET_NOTIFICATIONS, {
     onCompleted: (completedData) => {
       const notifications = completedData?.getNotifications ?? [];
+      console.log("Notifications fetched from server:", notifications);
 
       setNotifications(notifications);
+    },
+    onError: (error) => {
+      console.error("GraphQL error on load:", error);
     },
   });
 
@@ -101,10 +105,11 @@ export default function Dashboard() {
     async function fetchDatahNotifications() {
       try {
         const result = await refetchNotifications();
+        console.log("Refetched notifications:", result?.data?.getNotifications);
 
         if (result?.data) setNotifications(result.data.getNotifications);
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Error while refetching notifications:", error);
       }
     }
 
@@ -282,66 +287,62 @@ export default function Dashboard() {
   };
 
   const renderGrid = (nodes) => {
-    if (Array.isArray(nodes) && nodes.length > 0) {
-      return (
-        <Box
-          sx={{
-            // Make the container scrollable
-            overflow: "auto",
-            height: "calc(100vh - 100px)",
-          }}
-        >
-          <Box
-            sx={{ flexGrow: 1, px: 3, position: "sticky", top: 0, zIndex: 2 }}
-          >
-            <StyledPaper
-              sx={{
-                my: 1,
-                mx: "auto",
-                p: 2,
-                overflow: "hidden",
-              }}
-            >
-              <Grid container wrap="nowrap" spacing={2}>
-                <Grid item xs={2} zeroMinWidth>
-                  <Typography noWrap style={headerStyle}>
-                    Customer Name
-                  </Typography>
-                </Grid>
+    console.log("Notifications passed to renderGrid:", nodes);
 
-                <Grid item xs={2} zeroMinWidth>
-                  <Typography noWrap style={headerStyle}>
-                    Folder Name
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={2} zeroMinWidth>
-                  <Typography noWrap style={headerStyle}>
-                    Notification
-                  </Typography>
-                </Grid>
-
-                <Grid
-                  item
-                  xs={6}
-                  zeroMinWidth
-                  sx={{ display: "flex", justifyContent: "flex-end" }}
-                >
-                  <Button
-                    onClick={handleAddNotificationClick}
-                    color="primary"
-                    variant="contained"
-                  >
-                    Add notification
-                  </Button>
-                </Grid>
+    return (
+      <Box
+        sx={{
+          overflow: "auto",
+          height: "calc(100vh - 100px)",
+        }}
+      >
+        {/* Header Row + Add Button */}
+        <Box sx={{ flexGrow: 1, px: 3, position: "sticky", top: 0, zIndex: 2 }}>
+          <StyledPaper sx={{ my: 1, mx: "auto", p: 2, overflow: "hidden" }}>
+            <Grid container wrap="nowrap" spacing={2}>
+              <Grid item xs={2} zeroMinWidth>
+                <Typography noWrap style={headerStyle}>
+                  Customer Name
+                </Typography>
               </Grid>
-            </StyledPaper>
-          </Box>
-          {nodes?.map((node) => renderItem(node))}
+              <Grid item xs={2} zeroMinWidth>
+                <Typography noWrap style={headerStyle}>
+                  Folder Name
+                </Typography>
+              </Grid>
+              <Grid item xs={2} zeroMinWidth>
+                <Typography noWrap style={headerStyle}>
+                  Notification
+                </Typography>
+              </Grid>
+              <Grid
+                item
+                xs={6}
+                zeroMinWidth
+                sx={{ display: "flex", justifyContent: "flex-end" }}
+              >
+                <Button
+                  onClick={handleAddNotificationClick}
+                  color="primary"
+                  variant="contained"
+                >
+                  Add notification
+                </Button>
+              </Grid>
+            </Grid>
+          </StyledPaper>
         </Box>
-      );
-    } else return null;
+
+        {/* Notification List */}
+        {Array.isArray(nodes) && nodes.length > 0 ? (
+          nodes.map((node) => renderItem(node))
+        ) : (
+          <Box sx={{ px: 3 }}>
+            <Typography>No notifications available.</Typography>
+          </Box>
+        )}
+      </Box>
+    );
   };
 
   return (
