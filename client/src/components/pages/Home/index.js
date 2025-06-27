@@ -31,7 +31,6 @@ const isDefaultPort =
 const portSegment = API_PORT && !isDefaultPort ? `:${API_PORT}` : "";
 const BASE_URI = `${API_PROTOCOL}://${API_HOST}${portSegment}`;
 
-
 const drawerWidth = 240;
 
 export default function PermanentDrawerLeft({
@@ -74,7 +73,22 @@ export default function PermanentDrawerLeft({
   const [expanded, setExpanded] = useState(["root"]);
 
   const handlePathChange = (path) => {
-    const parts = path?.split("\\");
+    console.log("path: ", path);
+    if (!path) {
+      setPathSegments([]);
+      return;
+    }
+
+    let parts = [];
+
+    if (path.includes("\\")) {
+      parts = path.split("\\");
+    } else if (path.includes("/")) {
+      parts = path.split("/");
+    } else {
+      parts = [path]; // No separators, treat as single segment
+    }
+    console.log("Segments:", parts);
     setPathSegments(parts);
   };
 
@@ -226,16 +240,13 @@ export default function PermanentDrawerLeft({
       const formattedPath = [...pathSegments, fileName].join("/");
 
       try {
-        const response = await fetch(
-          `${BASE_URI}/download`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ pathToFile: formattedPath }),
-          }
-        );
+        const response = await fetch(`${BASE_URI}/download`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ pathToFile: formattedPath }),
+        });
         if (!response.ok) {
           throw new Error("Failed to download file");
         }
