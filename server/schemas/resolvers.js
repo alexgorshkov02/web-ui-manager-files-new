@@ -31,15 +31,11 @@ const sortByDirectories = (notifications) => {
 
 const getClientOptions = (useSSL, ldapCertPath, ldapServer, ldapPort) => {
   if (useSSL && !ldapCertPath) {
-    throw new Error(
-      "SSL is enabled but no certificate path is provided"
-    );
+    throw new Error("SSL is enabled but no certificate path is provided");
   }
 
   const clientOptions = {
-    url: `${
-      useSSL ? "ldaps" : "ldap"
-    }://${ldapServer}:${ldapPort}`,
+    url: `${useSSL ? "ldaps" : "ldap"}://${ldapServer}:${ldapPort}`,
   };
 
   if (useSSL) {
@@ -50,7 +46,7 @@ const getClientOptions = (useSSL, ldapCertPath, ldapServer, ldapPort) => {
   }
 
   return clientOptions;
-}
+};
 
 async function authenticateUser(username, password) {
   const authParamNames = [
@@ -81,7 +77,12 @@ async function authenticateUser(username, password) {
   const paramAuthLdapBaseDN = authParamMap["auth-base-dn"];
   console.log("LDAP Base DN:", paramAuthLdapBaseDN);
 
-  const clientOptions = getClientOptions(paramAuthUseSSL, paramAuthLdapCertPath, paramAuthLdapServer, paramAuthLdapPort);
+  const clientOptions = getClientOptions(
+    paramAuthUseSSL,
+    paramAuthLdapCertPath,
+    paramAuthLdapServer,
+    paramAuthLdapPort
+  );
   const client = ldap.createClient(clientOptions);
 
   // Error handler to avoid crash
@@ -202,8 +203,8 @@ async function getAccessFolders(username) {
   const paramScope = paramMap["scope"];
   const paramFilter = paramMap["filter"];
   const paramAttribute = paramMap["attribute"];
-  
-  const attributes = ['cn', paramAttribute.trim()];
+
+  const attributes = ["cn", paramAttribute.trim()];
   const accessFolders = [];
 
   console.log("LDAP Base DN:", paramLdapBaseDN);
@@ -211,8 +212,12 @@ async function getAccessFolders(username) {
   console.log("LDAP Filter:", paramFilter);
   console.log("LDAP Attribute:", paramAttribute);
 
-
-  const clientOptions = getClientOptions(paramUseSSL, paramLdapCertPath, paramLdapServer, paramLdapPort);
+  const clientOptions = getClientOptions(
+    paramUseSSL,
+    paramLdapCertPath,
+    paramLdapServer,
+    paramLdapPort
+  );
   const client = ldap.createClient(clientOptions);
 
   // Error handler to avoid crash
@@ -238,7 +243,7 @@ async function getAccessFolders(username) {
     const searchOptions = {
       scope: paramScope,
       filter: paramFilter,
-      attributes: attributes
+      attributes: attributes,
     };
 
     console.log("LDAP search options:", searchOptions);
