@@ -1,3 +1,4 @@
+const fs = require("fs");
 const JWT = require("jsonwebtoken");
 const { User, AdminParams, Notification } = require("../models");
 const ldap = require("ldapjs");
@@ -6,7 +7,7 @@ const path = require("path");
 const JWT_SECRET = process.env.JWT_SECRET || "";
 if (!JWT_SECRET) {
   console.error("JWT_SECRET is not set in environment variables!");
-  process.exit(1);  //stop app if secret is not set
+  process.exit(1); //stop app if secret is not set
 }
 
 const {
@@ -28,8 +29,39 @@ const sortByDirectories = (notifications) => {
   return sortedNotifications;
 };
 
+const getClientOptions = (useSSL, ldapCertPath, ldapServer, ldapPort) => {
+  if (useSSL && !ldapCertPath) {
+    throw new Error(
+      "SSL is enabled but no certificate path is provided"
+    );
+  }
+
+  const clientOptions = {
+    url: `${
+      useSSL ? "ldaps" : "ldap"
+    }://${ldapServer}:${ldapPort}`,
+  };
+
+  if (useSSL) {
+    const certPath = path.join(process.cwd(), ldapCertPath);
+    clientOptions.tlsOptions = {
+      ca: [fs.readFileSync(certPath)],
+    };
+  }
+
+  return clientOptions;
+}
+
 async function authenticateUser(username, password) {
-  const authParamNames = ["auth-ldap-server", "auth-ldap-port", "auth-base-dn"];
+  const authParamNames = [
+    "auth-ldap-use-ssl",
+    "auth-ldap-cert-path",
+    "auth-ldap-server",
+    "auth-ldap-port",
+    "auth-bind-dn",
+    "auth-bind-password",
+    "auth-base-dn",
+  ];
 
   const authParams = await AdminParams.find({
     name: { $in: authParamNames },
@@ -40,15 +72,35 @@ async function authenticateUser(username, password) {
     authParamMap[param.name] = param.value;
   });
 
+  const paramAuthUseSSL = authParamMap["auth-ldap-use-ssl"] === "true";
+  const paramAuthLdapCertPath = authParamMap["auth-ldap-cert-path"];
   const paramAuthLdapServer = authParamMap["auth-ldap-server"];
   const paramAuthLdapPort = authParamMap["auth-ldap-port"];
+  const paramAuthLdapBindDN = authParamMap["auth-bind-dn"];
+  const paramAuthLdapBindPassword = authParamMap["auth-bind-password"];
   const paramAuthLdapBaseDN = authParamMap["auth-base-dn"];
+  console.log("LDAP Base DN:", paramAuthLdapBaseDN);
 
-  const client = ldap.createClient({
-    url: "ldap://" + paramAuthLdapServer + ":" + paramAuthLdapPort,
+  const clientOptions = getClientOptions(paramAuthUseSSL, paramAuthLdapCertPath, paramAuthLdapServer, paramAuthLdapPort);
+  const client = ldap.createClient(clientOptions);
+
+  // Error handler to avoid crash
+  client.on("error", (err) => {
+    console.error("LDAP client error (authenticateUser):", err.message || err);
   });
 
   try {
+    // First bind using service account (bind DN)
+    await new Promise((resolve, reject) => {
+      client.bind(paramAuthLdapBindDN, paramAuthLdapBindPassword, (err) => {
+        if (err) {
+          console.error("LDAP service bind error:", err);
+          return reject(new Error("LDAP bind failed with service credentials"));
+        }
+        resolve();
+      });
+    });
+
     const searchOptions = {
       filter: `(uid=${username})`,
       scope: "sub",
@@ -57,17 +109,23 @@ async function authenticateUser(username, password) {
 
     const userDN = await new Promise((resolve, reject) => {
       client.search(paramAuthLdapBaseDN, searchOptions, (err, res) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error("LDAP search init error:", err);
+          return reject(err);
+        }
 
         let foundDN = null;
 
         res.on("searchEntry", (entry) => {
-          foundDN = entry.objectName || entry.dn;
+          foundDN = entry.objectName || entry.dn || entry.object?.dn;
         });
 
-        res.on("error", (err) => reject(err));
+        res.on("error", (err) => {
+          console.error("LDAP search response error:", err);
+          reject(err);
+        });
 
-        res.on("end", (result) => {
+        res.on("end", () => {
           if (foundDN) {
             resolve(foundDN);
           } else {
@@ -80,11 +138,12 @@ async function authenticateUser(username, password) {
     console.log("Found user DN:", userDN);
 
     const userDnString = userDN.toString();
-    // Try to bind as the user
+
+    // Bind as user with given password to check credentials
     await new Promise((resolve, reject) => {
       client.bind(userDnString, password, (err) => {
         if (err) {
-          console.error("Bind error:", err); // Include full error object for detail
+          console.error("LDAP bind error:", err);
           reject(new Error("Invalid credentials"));
         } else {
           resolve();
@@ -98,7 +157,11 @@ async function authenticateUser(username, password) {
     console.error("Error during authentication:", err.message || err);
     return false;
   } finally {
-    client.unbind();
+    client.unbind((unbindErr) => {
+      if (unbindErr) {
+        console.error("Error during LDAP unbind:", unbindErr);
+      }
+    });
   }
 }
 
@@ -106,6 +169,8 @@ async function authenticateUser(username, password) {
 
 async function getAccessFolders(username) {
   const paramNames = [
+    "ldap-use-ssl",
+    "ldap-cert-path",
     "ldap-server",
     "ldap-port",
     "bind-dn",
@@ -113,17 +178,22 @@ async function getAccessFolders(username) {
     "base-dn",
     "scope",
     "filter",
-    "attributes",
+    "attribute",
   ];
 
   const params = await AdminParams.find({
     name: { $in: paramNames },
   });
+
   const paramMap = {};
   params.forEach((param) => {
     paramMap[param.name] = param.value;
   });
 
+  console.log("LDAP Params:", paramMap);
+
+  const paramUseSSL = paramMap["ldap-use-ssl"] === "true";
+  const paramLdapCertPath = paramMap["ldap-cert-path"];
   const paramLdapServer = paramMap["ldap-server"];
   const paramLdapPort = paramMap["ldap-port"];
   const paramLdapBindDN = paramMap["bind-dn"];
@@ -131,83 +201,109 @@ async function getAccessFolders(username) {
   const paramLdapBaseDN = paramMap["base-dn"];
   const paramScope = paramMap["scope"];
   const paramFilter = paramMap["filter"];
-  const paramAttributes = paramMap["attributes"];
-  const modParamAttributes = paramAttributes
-    .split(",")
-    .map((attr) => attr.replace(/['"\s]+/g, "").trim());
-  // console.log("modParamAttributes:", modParamAttributes);
-
+  const paramAttribute = paramMap["attribute"];
+  
+  const attributes = ['cn', paramAttribute.trim()];
   const accessFolders = [];
 
-  const client = ldap.createClient({
-    url: "ldap://" + paramLdapServer + ":" + paramLdapPort, // Use your LDAP server's IP address
+  console.log("LDAP Base DN:", paramLdapBaseDN);
+  console.log("LDAP Scope:", paramScope);
+  console.log("LDAP Filter:", paramFilter);
+  console.log("LDAP Attribute:", paramAttribute);
+
+
+  const clientOptions = getClientOptions(paramUseSSL, paramLdapCertPath, paramLdapServer, paramLdapPort);
+  const client = ldap.createClient(clientOptions);
+
+  // Error handler to avoid crash
+  client.on("error", (err) => {
+    console.error("LDAP client error (authenticateUser):", err.message || err);
   });
 
   try {
-    // Bind to the LDAP server
+    // Bind to LDAP with service account
     await new Promise((resolve, reject) => {
       client.bind(paramLdapBindDN, paramLdapBindPassword, (err) => {
         if (err) {
-          reject("Error binding to the LDAP server");
+          console.error("LDAP bind error (getAccessFolders):", err);
+          reject(new Error("Error binding to the LDAP server"));
         } else {
+          console.log("LDAP bind successful");
           resolve();
         }
       });
     });
 
-    // console.log("Bind successful!");
-
+    // Look for user in groups for files
     const searchOptions = {
       scope: paramScope,
       filter: paramFilter,
-      attributes: modParamAttributes,
+      attributes: attributes
     };
 
-    // Search the LDAP server
+    console.log("LDAP search options:", searchOptions);
+
     await new Promise((resolve, reject) => {
       client.search(paramLdapBaseDN, searchOptions, (err, res) => {
         if (err) {
-          reject("Search error");
+          console.error("LDAP search init error (getAccessFolders):", err);
+          return reject(new Error("LDAP search error"));
         }
 
         res.on("searchEntry", (entry) => {
+          console.log("LDAP searchEntry received:", entry.objectName);
+
           if (entry.attributes) {
             const cnAttr = entry.attributes.find((attr) => attr.type === "cn");
-            const memberUidAttr = entry.attributes.find(
-              (attr) => attr.type === "memberUid"
+            const memberAttr = entry.attributes.find(
+              (attr) => attr.type === paramAttribute
             );
 
-            // if (cnAttr) {
-            //   console.log("Found subfolder (cn):", cnAttr.values);
-            // }
+            console.log("Entry CN:", cnAttr?.values);
+            console.log("Entry member values:", memberAttr?.values);
 
-            // if (memberUidAttr) {
-            //   console.log(
-            //     "Members in subfolder (memberUid):",
-            //     memberUidAttr.values
-            //   );
-            // }
+            const isUserMember = memberAttr?.values?.some((dn) => {
+              // Extract uid from DN string like "uid=user,ou=users,dc=example,dc=org"
+              const match = dn.match(/^uid=([^,]+)/i);
+              const uid = match ? match[1] : null;
+              return uid && uid.toLowerCase() === username.toLowerCase();
+            });
 
-            if (memberUidAttr?.values?.includes(username)) {
+            if (isUserMember && cnAttr?.values) {
+              console.log(`User ${username} is a member of`, cnAttr.values);
               accessFolders.push(...cnAttr.values);
             }
           }
         });
 
+        res.on("error", (err) => {
+          console.error("LDAP search response error (getAccessFolders):", err);
+          reject(err);
+        });
+
         res.on("end", () => {
-          console.log("Search completed!");
-          resolve(); // Resolving when the search is finished
+          console.log("LDAP search completed");
+          resolve();
         });
       });
     });
 
+    console.log("Access folders found:", accessFolders);
     return accessFolders;
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Error in getAccessFolders:", err.message || err);
     return [];
+  } finally {
+    client.unbind((unbindErr) => {
+      if (unbindErr) {
+        console.error(
+          "Error during LDAP unbind (getAccessFolders):",
+          unbindErr
+        );
+      }
+    });
   }
 }
-
 const resolvers = {
   Query: {
     // directories: () => directories,
@@ -512,6 +608,7 @@ const resolvers = {
           return { token };
         }
       } catch (error) {
+        console.error("Login error details:", error);
         throw new Error("An error occurred while logging in");
       }
     },
