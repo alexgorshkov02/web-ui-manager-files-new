@@ -1,6 +1,6 @@
 const fs = require("fs");
 const JWT = require("jsonwebtoken");
-const { User, AdminParams, Notification } = require("../models");
+const { User, AdminParams, ProfileParams, Notification } = require("../models");
 const ldap = require("ldapjs");
 const path = require("path");
 
@@ -530,6 +530,20 @@ const resolvers = {
         throw new Error("Error fetching admin params");
       }
     },
+    getProfileParams: async (root, args, context) => {
+      if (!context.user) {
+        throw new Error("Not authenticated");
+      }
+      try {
+        console.log("context.user.id: ", context.user.id);
+        const params = await ProfileParams.findOne({ userId: context.user.id });
+        console.log("params: ", params);
+        return params;
+      } catch (error) {
+        console.error("Error in getProfileParams resolver:", error);
+        throw new Error("Failed to fetch profile params");
+      }
+    },
     getNotifications: async () => {
       try {
         console.log("Received request for getNotifications");
@@ -646,7 +660,58 @@ const resolvers = {
       }
       return null;
     },
+    setProfileParams: async (parent, { sorting }, context) => {
+      try {
+        if (!context.user) {
+          throw new Error("Not authenticated");
+        }
 
+        const { field, direction } = sorting ?? {};
+
+        // Allowed values
+        const validFields = ["name", "size", "ctime"];
+        const validDirections = ["asc", "desc"];
+
+        // Validate sorting.field
+        if (field && !validFields.includes(field)) {
+          throw new Error(
+            `Invalid sorting field. Allowed: ${validFields.join(", ")}`
+          );
+        }
+
+        // Validate sorting.direction
+        if (direction && !validDirections.includes(direction)) {
+          throw new Error(`Invalid sorting direction. Allowed: asc, desc`);
+        }
+
+        const query = { userId: context.user.id };
+        const isReset = !field && !direction;
+
+        if (isReset) {
+          await ProfileParams.updateOne(query, {
+            $unset: {
+              "sorting.field": "",
+              "sorting.direction": "",
+            },
+          });
+        } else {
+          const params = {};
+          if (field) params["sorting.field"] = field;
+          if (direction) params["sorting.direction"] = direction;
+
+          await ProfileParams.updateOne(
+            query,
+            { $set: params },
+            { upsert: true } // creates the record if it doesn't exist
+          );
+        }
+
+        return await ProfileParams.findOne(query);
+      } catch (error) {
+        console.error("SetProfileParams error details:", error);
+        throw new Error("An error occurred while setting profile parameters");
+      }
+    },
     addNotification: async (
       parent,
       { customer, directory, value },

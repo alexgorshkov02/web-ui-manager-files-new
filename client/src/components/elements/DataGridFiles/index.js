@@ -1,6 +1,9 @@
+import React, { useState, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import Box from "@mui/material/Box";
 import { styled } from "@mui/material/styles";
+import { useQuery } from "@apollo/client";
+import { GET_PROFILE_PARAMS } from "../../../apollo/queries/getProfileParams";
 
 const StyledGridOverlay = styled("div")(({ theme }) => ({
   display: "flex",
@@ -27,6 +30,25 @@ const StyledGridOverlay = styled("div")(({ theme }) => ({
 }));
 
 export default function DataGridFiles({ selectedFiles, handleRowClick }) {
+  const { data } = useQuery(GET_PROFILE_PARAMS);
+
+  const [sortParams, setSortParams] = useState(null);
+
+  useEffect(() => {
+    const sorting = data?.getProfileParams?.sorting;
+    if (
+      sorting?.field &&
+      sorting?.direction &&
+      sorting.field !== "default" &&
+      sorting.direction !== "default"
+    ) {
+      setSortParams({ field: sorting.field, sort: sorting.direction });
+    } else {
+      // Apply no sorting
+      setSortParams(null); 
+    }
+  }, [data]);
+
   function CustomNoRowsOverlay() {
     return (
       <StyledGridOverlay>
@@ -140,6 +162,8 @@ export default function DataGridFiles({ selectedFiles, handleRowClick }) {
       ]}
       rows={selectedFiles}
       autoHeight
+      sortModel={sortParams ? [sortParams] : []}
+      onSortModelChange={(model) => setSortParams(model[0] || null)}
       onRowClick={(params) => {
         const typename = params.row.type;
         const relativePath = params.row.relativePath;

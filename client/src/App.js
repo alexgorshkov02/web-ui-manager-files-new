@@ -4,6 +4,7 @@ import "./App.css";
 import Home from "./components/pages/Home";
 import Dashboard from "./components/pages/Dashboard";
 import Admin from "./components/pages/Admin";
+import Profile from "./components/pages/Profile";
 import Login from "./components/pages/Login";
 import Signup from "./components/pages/Signup";
 import React, { useState, useEffect } from "react";
@@ -14,6 +15,7 @@ import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RerouteToHomePage from "./components/RerouteToHomePage";
 
@@ -25,8 +27,11 @@ const App = () => {
     skip: !loggedIn, // only run query if logged in
     fetchPolicy: "network-only",
     onCompleted: (data) => {
-    console.log("currentUser query completed from [ComponentName]", data ?? {});
-  },
+      console.log(
+        "currentUser query completed from App.js: ",
+        data ?? {}
+      );
+    },
   });
   const [user, setUser] = useState(null);
 
@@ -138,7 +143,7 @@ const App = () => {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute user={user}>
+                <ProtectedRoute user={user} requireAdmin>
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -146,8 +151,16 @@ const App = () => {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute user={user}>
+                <ProtectedRoute user={user} requireAdmin>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute user={user}>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
@@ -167,6 +180,7 @@ const App = () => {
                 </RerouteToHomePage>
               }
             />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       )}

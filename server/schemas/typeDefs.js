@@ -38,6 +38,16 @@ const typeDefs = `#graphql
     value: String
   }
 
+  type SortParams {
+    field: String
+    direction: String # "asc" or "desc"
+  }
+
+  type ProfileParams {
+    sorting: SortParams
+  }
+
+
   # The "Query" type is special: it lists all of the available queries that
   # clients can execute, along with the return type for each. In this
   # case, the "directories" query returns an array of zero or more Directories (defined above).
@@ -47,6 +57,7 @@ const typeDefs = `#graphql
     users: [User]
     currentUser: User @auth
     getAdminParams: [AdminParams] @auth
+    getProfileParams: ProfileParams @auth
     getNotification(directory: String): Notification
     getNotifications: [Notification]
   }
@@ -72,10 +83,16 @@ const typeDefs = `#graphql
     token: String
   }
 
+  input SortingInput {
+    field: String
+    direction: String
+  }
+
   type Mutation {
     login(username: String!, password: String!): Auth
     signup(username: String!, password: String!): Auth
     setAdminParams(name: String!, value: String): AdminParams
+    setProfileParams(sorting: SortingInput): ProfileParams
     addNotification(customer: String, directory: String!, value: String): Notification
     updateNotification(id: ID!, customer: String, directory: String!, value: String): Notification
     deleteNotification(id: ID!): Notification
