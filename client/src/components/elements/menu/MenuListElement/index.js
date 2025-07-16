@@ -11,14 +11,16 @@ import { styled } from "@mui/material/styles";
 import LogoutMenuItem from "../LogoutMenuItem";
 import { UserConsumer } from "../../user/UserConsumer";
 import UserBar from "../../user/UserBar";
+import { useNavigate } from "react-router-dom";
 
 const CustomizedButton = styled(Button)`
   color: #ffffff;
   text-transform: none !important;
-  paddingLeft: "20px"
+  paddingleft: "20px";
 `;
 
 export default function MenuListComposition({ changeLoginState, client }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const anchorRef = useRef(null);
 
@@ -26,8 +28,8 @@ export default function MenuListComposition({ changeLoginState, client }) {
     setOpen((prevOpen) => !prevOpen);
   };
 
-  const handleClose = (event) => {
-    if (anchorRef.current && anchorRef.current.contains(event.target)) {
+  const handleCloseWithEvent = (event) => {
+    if (event?.target && anchorRef.current?.contains(event.target)) {
       return;
     }
     setOpen(false);
@@ -85,14 +87,21 @@ export default function MenuListComposition({ changeLoginState, client }) {
               }}
             >
               <Paper>
-                <ClickAwayListener onClickAway={handleClose}>
+                <ClickAwayListener onClickAway={handleCloseWithEvent}>
                   <MenuList
                     autoFocusItem={open}
                     id="composition-menu"
                     aria-labelledby="composition-button"
                     onKeyDown={handleListKeyDown}
                   >
-                    <MenuItem onClick={handleClose}>Profile</MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        handleCloseWithEvent();
+                        navigate("/profile");
+                      }}
+                    >
+                      Profile
+                    </MenuItem>
                     <LogoutMenuItem
                       changeLoginState={changeLoginState}
                       client={client}

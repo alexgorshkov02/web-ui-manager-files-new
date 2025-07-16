@@ -1,23 +1,17 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const ProtectedRoute = ({ user, children }) => {
+const ProtectedRoute = ({ user, children, requireAdmin = false }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user === null) {
-      return;
-    }
-    if (!user || user.role !== "admin") {
+    if (user === null) return; // still loading
+    if (!user || (requireAdmin && user.role !== "admin")) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, navigate, requireAdmin]);
 
-  if (user) {
-    return children;
-  } else {
-    return null;
-  }
+  return user ? children : null;
 };
 
 export default ProtectedRoute;
