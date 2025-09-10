@@ -14,6 +14,13 @@ const adminParamsSchema = new Schema(
       unique: false,
       trim: true,
     },
+    group: {
+      type: String,
+      enum: ["general", "authentication", "folders"],
+      required: false,
+      unique: false,
+      trim: true,
+    },
   },
   {
     toJSON: {

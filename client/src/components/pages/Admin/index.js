@@ -1,136 +1,73 @@
 import React, { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
-import TextField from "@mui/material/TextField";
 import { useSetAdminParams } from "../../../apollo/mutations";
 import { useQuery } from "@apollo/client";
 import { GET_ADMIN_PARAMS } from "../../../apollo/queries/getAdminParams";
+import Button from "@mui/material/Button";
+import { useTheme } from "@mui/material";
+import { renderFields } from "./renderHelpers";
+import { handleSaveAll } from "./saveHelpers";
 
 export default function Admin() {
-  const [adminParam, setAdminParam] = useState("");
+  const theme = useTheme();
+  const [adminParam, setAdminParam] = useState({
+    general: [],
+    authentication: [],
+    folders: [],
+  });
 
-  const [updateAdminParam, { error: errorSetAdminParams }] =
-    useSetAdminParams();
+  const [editedFields, setEditedFields] = useState({});
+  const [savedFields, setSavedFields] = useState({});
 
-  if (errorSetAdminParams) {
-    console.error("Error:", errorSetAdminParams);
-  }
+  const [updateAdminParam] = useSetAdminParams();
 
-  const { error: errorGetAdminParams, refetch } = useQuery(GET_ADMIN_PARAMS, {
+  const { refetch } = useQuery(GET_ADMIN_PARAMS, {
     onCompleted: (completedData) => {
-      const params = completedData?.getAdminParams ?? [];
+      const params = completedData?.getAdminParams ?? {
+        general: [],
+        authentication: [],
+        folders: [],
+      };
       setAdminParam(params);
+      setEditedFields({});
+      setSavedFields({});
     },
   });
 
-  if (errorGetAdminParams) {
-    console.error("Error:", errorGetAdminParams);
-  }
-
   useEffect(() => {
-    async function fetchDataAdminParam() {
-      try {
-        await refetch();
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    }
-
-    fetchDataAdminParam();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminParam]);
-
-  const parameters = [
-    { id: "path-to-root-directory", label: "Path to root directory" },
-    { id: "auth-ldap", label: "Auth ldap (true|false)" },
-    { id: "auth-ldap-use-ssl", label: "Use ssl (true|false)" },
-    { id: "auth-ldap-cert-path", label: "LDAP certificate path" },
-    { id: "auth-ldap-server", label: "Auth Ldap server IP address" },
-    { id: "auth-ldap-port", label: "Auth Ldap server port" },
-    { id: "auth-bind-dn", label: "Auth Bind DN" },
-    { id: "auth-bind-password", label: "Auth Bind password" },
-    { id: "auth-base-dn", label: "Auth Base DN" },
-    { id: "ldap", label: "ldap (true|false)" },
-    { id: "ldap-use-ssl", label: "Use ssl (true|false)" },
-    { id: "ldap-cert-path", label: "LDAP certificate path" },
-    { id: "ldap-server", label: "Ldap server IP address" },
-    { id: "ldap-port", label: "Ldap server port" },
-    { id: "bind-dn", label: "Bind DN" },
-    { id: "bind-password", label: "Bind password" },
-    { id: "base-dn", label: "Base DN" },
-    { id: "scope", label: "Scope (Search Options)" },
-    { id: "filter", label: "Filter (Search Options)" },
-    { id: "attribute", label: "Attribute (Search Options)" },
-  ];
-
-  const handleTextChange = (event, paramName) => {
-    const newValue = event.target.value;
-    // console.log("event.target: ", event.target);
-    // console.log("name: ", paramName, "value: ", newValue);
-    try {
-      updateAdminParam({
-        variables: { name: paramName, value: newValue },
-      });
-    } catch (error) {
-      console.error("Error: ", error);
-    }
-
-    const updatedAdminParam = adminParam.map((param) => {
-      if (param.name === paramName) {
-        // console.log("param.name === paramName");
-        // Update the value property for the matching object
-        return { ...param, value: newValue };
-      }
-      // Return unchanged objects
-      // console.log("unchanged objects");
-      return param;
-    });
-
-    // Check if the paramName doesn't exist, and if so, add a new object to the array
-    if (!updatedAdminParam.some((param) => param.name === paramName)) {
-      updatedAdminParam.push({ name: paramName, value: newValue });
-    }
-
-    // console.log("updatedAdminParam: ", updatedAdminParam);
-    setAdminParam(updatedAdminParam); // Update the state with the new array
-  };
-
-  const renderFields = (parameters) =>
-    Array.isArray(parameters)
-      ? parameters.map((parameter) => renderItem(parameter))
-      : null;
-
-  const renderItem = (parameter) => {
-    // console.log("parameter: ", parameter);
-    // console.log("adminParam: ", adminParam);
-
-    if (Array.isArray(adminParam)) {
-      return (
-        <TextField
-          key={parameter.id}
-          id={parameter.id}
-          label={parameter.label}
-          variant="outlined"
-          value={
-            adminParam.find((obj) => obj.name === parameter.id)?.value || ""
-          }
-          onChange={(event) => handleTextChange(event, parameter.id)}
-        />
-      );
-    } else return null;
-  };
+    refetch();
+  }, [refetch]);
 
   return (
-    <Box
-      component="form"
-      sx={{
-        "& > :not(style)": { m: 1, width: "25ch" },
-      }}
-      noValidate
-      autoComplete="off"
-    >
+    <Box sx={{ p: 2 }}>
       <CssBaseline />
-      {renderFields(parameters)}
+      {renderFields({
+        theme,
+        adminParam,
+        editedFields,
+        savedFields,
+        setAdminParam,
+        setEditedFields,
+        setSavedFields,
+        updateAdminParam,
+      })}
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() =>
+          handleSaveAll({
+            adminParam,
+            editedFields,
+            setEditedFields,
+            setSavedFields,
+            updateAdminParam,
+          })
+        }
+        sx={{ mt: 3 }}
+      >
+        Save All
+      </Button>
     </Box>
   );
 }

@@ -27,8 +27,15 @@ const typeDefs = `#graphql
   }
 
   type AdminParams {
-    name: String
+    name: String!
     value: String
+    group: String
+  }
+
+  type AdminParamGroups {
+    general: [AdminParams]
+    authentication: [AdminParams]
+    folders: [AdminParams]
   }
 
   type Notification {
@@ -56,7 +63,7 @@ const typeDefs = `#graphql
     files(directory: String): File @auth
     users: [User]
     currentUser: User @auth
-    getAdminParams: [AdminParams] @auth
+    getAdminParams: AdminParamGroups! @auth
     getProfileParams: ProfileParams @auth
     getNotification(directory: String): Notification
     getNotifications: [Notification]
@@ -91,7 +98,7 @@ const typeDefs = `#graphql
   type Mutation {
     login(username: String!, password: String!): Auth
     signup(username: String!, password: String!): Auth
-    setAdminParams(name: String!, value: String): AdminParams
+    setAdminParams(name: String!, value: String, group: String): AdminParams
     setProfileParams(sorting: SortingInput): ProfileParams
     addNotification(customer: String, directory: String!, value: String): Notification
     updateNotification(id: ID!, customer: String, directory: String!, value: String): Notification
