@@ -3,6 +3,11 @@ const JWT = require("jsonwebtoken");
 const { User, AdminParams, ProfileParams, Notification } = require("../models");
 const ldap = require("ldapjs");
 const path = require("path");
+const crypto = require("crypto");
+
+const algorithm = "aes-256-cbc";
+const key = Buffer.from(process.env.ENCRYPTION_KEY, "hex"); // must be 32 bytes. Converts hex string -> binary buffer
+const iv = Buffer.from(process.env.ENCRYPTION_IV, "hex"); // must be 16 bytes. Converts hex string -> binary buffer
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 if (!JWT_SECRET) {
@@ -14,6 +19,20 @@ const {
   directoryTree,
   getFilesFromSelectedDirectory,
 } = require("../utils/directoryTree");
+
+function encrypt(text) {
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
+  let encrypted = cipher.update(text, "utf8", "base64");
+  encrypted += cipher.final("base64");
+  return encrypted;
+}
+
+function decrypt(encryptedText) {
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+  let decrypted = decipher.update(encryptedText, "base64", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
+}
 
 const sortByDirectories = (notifications) => {
   const sortedNotifications = [...notifications];
@@ -73,9 +92,9 @@ async function authenticateUser(username, password) {
   const paramAuthLdapServer = authParamMap["auth-ldap-server"];
   const paramAuthLdapPort = authParamMap["auth-ldap-port"];
   const paramAuthLdapBindDN = authParamMap["auth-bind-dn"];
-  const paramAuthLdapBindPassword = authParamMap["auth-bind-password"];
+  const encryptedPassword = authParamMap["auth-bind-password"];
+  const paramAuthLdapBindPassword = decrypt(encryptedPassword);
   const paramAuthLdapBaseDN = authParamMap["auth-base-dn"];
-  console.log("LDAP Base DN:", paramAuthLdapBaseDN);
 
   const clientOptions = getClientOptions(
     paramAuthUseSSL,
@@ -198,13 +217,26 @@ async function getAccessFolders(username) {
   const paramLdapServer = paramMap["ldap-server"];
   const paramLdapPort = paramMap["ldap-port"];
   const paramLdapBindDN = paramMap["bind-dn"];
-  const paramLdapBindPassword = paramMap["bind-password"];
+  const encryptedPassword = paramMap["bind-password"];
+  const paramLdapBindPassword = decrypt(encryptedPassword);
   const paramLdapBaseDN = paramMap["base-dn"];
   const paramScope = paramMap["scope"];
   const paramFilter = paramMap["filter"];
-  const paramAttribute = paramMap["attribute"];
 
-  const attributes = ["cn", paramAttribute.trim()];
+  const paramAttribute = paramMap["attribute"];
+  const attributes = ["cn"];
+  if (paramAttribute && typeof paramAttribute === "string") {
+    attributes.push(paramAttribute.trim());
+  }
+
+  // Check required params
+  if (!paramLdapServer) {
+    throw new Error("LDAP server (ldap-server) is not configured");
+  }
+  if (!paramLdapPort) {
+    throw new Error("LDAP port (ldap-port) is not configured");
+  }
+
   const accessFolders = [];
 
   console.log("LDAP Base DN:", paramLdapBaseDN);
@@ -402,6 +434,7 @@ const resolvers = {
         }
       }
     },
+
     files: async (parent, { directory }, context) => {
       // return null;
       if (directory === undefined || directory === null) {
@@ -522,14 +555,31 @@ const resolvers = {
     currentUser(root, args, context) {
       return context.user;
     },
+
     getAdminParams: async () => {
       try {
-        const adminParams = await AdminParams.find();
-        return adminParams;
+        const params = await AdminParams.find();
+
+        const grouped = params.reduce((acc, param) => {
+          const group = param.group || "ungrouped";
+          if (!acc[group]) acc[group] = [];
+          acc[group].push({
+            name: param.name,
+            value: param.value,
+          });
+          return acc;
+        }, {});
+
+        return {
+          general: grouped.general || [],
+          authentication: grouped.authentication || [],
+          folders: grouped.folders || [],
+        };
       } catch (error) {
         throw new Error("Error fetching admin params");
       }
     },
+
     getProfileParams: async (root, args, context) => {
       if (!context.user) {
         throw new Error("Not authenticated");
@@ -544,6 +594,7 @@ const resolvers = {
         throw new Error("Failed to fetch profile params");
       }
     },
+
     getNotifications: async () => {
       try {
         console.log("Received request for getNotifications");
@@ -555,6 +606,7 @@ const resolvers = {
         throw new Error("Error fetching notifications");
       }
     },
+
     getNotification: async (parent, { directory }, context) => {
       // console.log("directory: ", directory);
       // if (typeof directory !== "string") {
@@ -633,6 +685,7 @@ const resolvers = {
         throw new Error("An error occurred while logging in");
       }
     },
+
     signup: async (parent, { username, password }, context) => {
       const existingUser = await User.findOne({ username });
       if (existingUser) {
@@ -650,16 +703,27 @@ const resolvers = {
         return { token };
       }
     },
-    setAdminParams: async (parent, { name, value }, context) => {
-      const existingEntity = await AdminParams.findOne({ name: name });
-      if (existingEntity) {
-        await AdminParams.updateOne({ name }, { $set: { value } });
-      } else {
-        console.log("name: ", name, "value: ", value);
-        await AdminParams.create({ name, value });
+
+    setAdminParams: async (parent, { name, value, group }, context) => {
+      // List of password fields to hash
+      const passwordFields = ["auth-bind-password", "bind-password"];
+      let storedValue = value;
+
+      if (passwordFields.includes(name)) {
+        storedValue = encrypt(value);
       }
+
+      const existingEntity = await AdminParams.findOne({ name });
+
+      if (existingEntity) {
+        await AdminParams.updateOne({ name }, { $set: { value: storedValue } });
+      } else {
+        await AdminParams.create({ name, value: storedValue, group });
+      }
+
       return null;
     },
+
     setProfileParams: async (parent, { sorting }, context) => {
       try {
         if (!context.user) {
@@ -712,6 +776,7 @@ const resolvers = {
         throw new Error("An error occurred while setting profile parameters");
       }
     },
+    
     addNotification: async (
       parent,
       { customer, directory, value },
