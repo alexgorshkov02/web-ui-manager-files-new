@@ -1,7 +1,7 @@
 import { Grid, Button, Stack } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
-export default function DataGridFiles({
+export default function Notification({
   notification,
   acceptNotification,
   declineNotification,

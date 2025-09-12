@@ -56,6 +56,7 @@ const LoginForm = ({ changeLoginState }) => {
             name="username"
             type="username"
             placeholder="username"
+            autoComplete="username"
             onChange={(event) => setUsername(event.target.value)}
           />
         </FormControl>
