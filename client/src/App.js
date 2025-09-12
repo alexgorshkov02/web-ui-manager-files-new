@@ -5,17 +5,14 @@ import Home from "./components/pages/Home";
 import Dashboard from "./components/pages/Dashboard";
 import Admin from "./components/pages/Admin";
 import Profile from "./components/pages/Profile";
-import Login from "./components/pages/Login";
-import Signup from "./components/pages/Signup";
 import React, { useState, useEffect } from "react";
 import LoginSignupForm from "./components/pages/LoginSignup";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import NavBar from "./components/elements/NavBar";
 import Loading from "./components/elements/Loading";
 import { useCurrentUserQuery } from "./apollo/queries/currentUser";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
-import { Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RerouteToHomePage from "./components/RerouteToHomePage";
 
