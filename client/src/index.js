@@ -48,7 +48,14 @@ const restLink = new RestLink({
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path, extensions }) => {
-      console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+
+      // Only log in development
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+        );
+      }
+      
       if (extensions?.code === "UNAUTHENTICATED") {
         Cookies.remove("jwt");
         client.clearStore();
