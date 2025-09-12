@@ -117,6 +117,7 @@ export default function Profile() {
           <Select
             labelId={`${parameter.id}-label`}
             id={parameter.id}
+            name={parameter.id}
             value={value}
             label={parameter.label}
             onChange={(event) => handleOptionChange(event, parameter.id)}
@@ -138,6 +139,7 @@ export default function Profile() {
           <Select
             labelId={`${parameter.id}-label`}
             id={parameter.id}
+            name={parameter.id}
             value={value}
             label={parameter.label}
             onChange={(event) => handleOptionChange(event, parameter.id)}

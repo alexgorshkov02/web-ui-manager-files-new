@@ -71,6 +71,7 @@ const SignupForm = ({ changeLoginState }) => {
             name="username"
             type="username"
             placeholder="username"
+            autoComplete="username"
             onChange={(e) => setUsername(e.target.value)}
           />
         </FormControl>
