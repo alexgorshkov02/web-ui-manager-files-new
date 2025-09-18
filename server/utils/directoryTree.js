@@ -74,16 +74,16 @@ function getFilesFromSelectedDirectory(rootDir, dirPath) {
     return null;
   }
 
-  console.log("[INFO] Requested scan:");
-  console.log("  Root Dir  :", rootDir);
-  console.log("  Dir Path  :", dirPath);
+  // console.log("[INFO] Requested scan:");
+  // console.log("  Root Dir  :", rootDir);
+  // console.log("  Dir Path  :", dirPath);
 
   // Normalize and resolve full paths
   const normalizedRoot = PATH.resolve(rootDir);
   const normalizedDir = PATH.resolve(dirPath);
 
-  console.log("  Normalized Root:", normalizedRoot);
-  console.log("  Normalized Path:", normalizedDir);
+  // console.log("  Normalized Root:", normalizedRoot);
+  // console.log("  Normalized Path:", normalizedDir);
 
   // Check existence
   if (!fs.existsSync(normalizedDir)) {

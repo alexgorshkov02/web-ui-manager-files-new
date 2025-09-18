@@ -23,12 +23,12 @@ const App = () => {
   const { error, loading, refetch } = useCurrentUserQuery({
     skip: !loggedIn, // only run query if logged in
     fetchPolicy: "network-only",
-    onCompleted: (data) => {
-      console.log(
-        "currentUser query completed from App.js: ",
-        data ?? {}
-      );
-    },
+    // onCompleted: (data) => {
+    //   console.log(
+    //     "currentUser query completed from App.js: ",
+    //     data ?? {}
+    //   );
+    // },
   });
   const [user, setUser] = useState(null);
 

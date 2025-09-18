@@ -10,12 +10,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { green } from "@mui/material/colors";
 import { handleSaveField } from "./saveHelpers";
-import {
-  getGroupForParam,
-  getParamValue,
-  getParamBoolean,
-  getParamName,
-} from "./getHelpers";
+import { getGroupForParam, getParamValue, getParamBoolean } from "./getHelpers";
 import {
   parameters,
   idAuthLdap,
@@ -139,6 +134,7 @@ const renderField = (parameter, groupKey, context) => {
   }
 
   if (parameter.type === switchType) {
+    const switchValue = value || "false";
     return (
       <FormControlLabel
         key={parameter.id}
@@ -146,7 +142,7 @@ const renderField = (parameter, groupKey, context) => {
           <Switch
             id={parameter.id}
             name={parameter.id}
-            checked={value === "true"}
+            checked={switchValue === "true"}
             onChange={async (e) => {
               const newVal = e.target.checked.toString();
               handleLocalChange(
@@ -237,13 +233,9 @@ const renderLdapGroup = (groupName, params, idPrefix, context) => {
 
   const groupKey = groupName.toLowerCase();
   const ldapToggleValue = getParamBoolean(adminParam, groupKey, idPrefix);
+
   const sslSwitchParamId =
     idPrefix === idAuthLdap ? idAuthLdapUseSSL : idLdapUseSSL;
-  const sslSwitchParamName = getParamName(
-    adminParam,
-    groupKey,
-    sslSwitchParamId
-  );
 
   const sslSwitchValue = getParamBoolean(
     adminParam,
@@ -268,7 +260,7 @@ const renderLdapGroup = (groupName, params, idPrefix, context) => {
       {ldapToggleValue && (
         <>
           <Box sx={{ display: "flex", gap: 2, m: 1, width: "100ch" }}>
-            {filterParams([sslSwitchParamName]).map((param) =>
+            {filterParams([sslSwitchParamId]).map((param) =>
               renderField(param, groupKey, context)
             )}
             {sslSwitchValue &&
@@ -316,9 +308,9 @@ const renderLdapGroup = (groupName, params, idPrefix, context) => {
 
 const renderFields = (context) =>
   Object.entries(parameters).map(([groupName, params]) => {
-    console.log("parameters: ", parameters);
+    // console.log("parameters: ", parameters);
     const key = groupName.toLowerCase();
-    console.log("groupName: ", groupName);
+    // console.log("groupName: ", groupName);
     if (key === authenticationGroup)
       return renderLdapGroup(groupName, params, idAuthLdap, context);
     if (key === foldersGroup)

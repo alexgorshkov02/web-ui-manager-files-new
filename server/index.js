@@ -21,7 +21,7 @@ const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || "";
 if (!JWT_SECRET) {
   console.error("JWT_SECRET is not set in environment variables!");
-  process.exit(1);  //stop app if secret is not set
+  process.exit(1); //stop app if secret is not set
 }
 
 // === Configuration ===
@@ -39,10 +39,10 @@ const isDefaultClientPort =
 const clientPortSegment = !isDefaultClientPort ? `:${API_CLIENT_PORT}` : "";
 const origin = `${PROTOCOL}://${API_HOST}${clientPortSegment}`;
 
-console.log("API_HOST:", API_HOST);
-console.log("API_SERVER_PORT:", API_SERVER_PORT);
-console.log("API_CLIENT_PORT:", API_CLIENT_PORT);
-console.log("Allowed CORS origin:", origin);
+// console.log("API_HOST:", API_HOST);
+// console.log("API_SERVER_PORT:", API_SERVER_PORT);
+// console.log("API_CLIENT_PORT:", API_CLIENT_PORT);
+// console.log("Allowed CORS origin:", origin);
 
 app.use(
   cors({
@@ -97,7 +97,7 @@ const server = new ApolloServer({
       },
     })
   );
-  
+
   // REST route for downloading files
   app.post("/download", async (req, res) => {
     try {
@@ -117,7 +117,7 @@ const server = new ApolloServer({
       }
 
       const resolvedPath = path.resolve(fullPathToDirectory, pathToFile);
-      console.log("fullPathToDirectory: ", resolvedPath);
+      // console.log("fullPathToDirectory: ", resolvedPath);
 
       // Get content type based on extension only
       const extMime = mime.lookup(resolvedPath) || "application/octet-stream";
@@ -138,7 +138,7 @@ const server = new ApolloServer({
       res.status(500).json({ error: "Failed to download file" });
     }
   });
-  
+
   // Serve frontend from React build
   app.use(express.static(path.join(__dirname, "client", "build")));
 
@@ -146,11 +146,11 @@ const server = new ApolloServer({
     res.sendFile(path.join(__dirname, "client", "build", "index.html"));
   });
 
-db.once("open", () => {
+  db.once("open", () => {
     if (NODE_ENV === "production") {
       const sslOptions = {
-        key: fs.readFileSync(path.join(__dirname, "cert", "key.pem")),
-        cert: fs.readFileSync(path.join(__dirname, "cert", "cert.pem")),
+        key: fs.readFileSync(process.env.SSL_KEY_PATH),
+        cert: fs.readFileSync(process.env.SSL_CERT_PATH),
       };
 
       https.createServer(sslOptions, app).listen(API_SERVER_PORT, () => {

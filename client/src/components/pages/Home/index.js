@@ -73,7 +73,7 @@ export default function PermanentDrawerLeft({
   const [expanded, setExpanded] = useState(["root"]);
 
   const handlePathChange = (path) => {
-    console.log("path: ", path);
+    // console.log("path: ", path);
     if (!path) {
       setPathSegments([]);
       return;
@@ -88,7 +88,7 @@ export default function PermanentDrawerLeft({
     } else {
       parts = [path]; // No separators, treat as single segment
     }
-    console.log("Segments:", parts);
+    // console.log("Segments:", parts);
     setPathSegments(parts);
   };
 
