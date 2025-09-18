@@ -1,0 +1,50 @@
+# -------------------------
+# Stage 1: Build
+# -------------------------
+FROM node:18 AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the app and build
+COPY . .
+RUN npm run build
+
+# -------------------------
+# Stage 2: Runtime
+# -------------------------
+FROM node:18-slim
+
+# Create non-root user
+RUN useradd -ms /bin/bash dockeruser
+
+# Set working directory
+WORKDIR /app
+
+# Copy React build from previous stage
+COPY --from=build /app/build ./build
+
+# Copy SSL certificates
+COPY ssl/cert.pem ssl/cert.pem
+COPY ssl/key.pem ssl/key.pem
+
+# Make SSL folder readable by dockeruser
+RUN chown -R dockeruser:dockeruser ssl
+
+# Install serve globally as root (avoids EACCES)
+RUN npm install -g serve
+
+# Switch to non-root user
+USER dockeruser
+
+# Expose HTTPS port
+EXPOSE 443
+
+# Serve the app over HTTPS
+CMD ["serve", "-s", "build", "-l", "443", "--ssl-cert", "ssl/cert.pem", "--ssl-key", "ssl/key.pem"]

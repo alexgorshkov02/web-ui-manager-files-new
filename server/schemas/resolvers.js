@@ -59,6 +59,15 @@ const getClientOptions = (useSSL, ldapCertPath, ldapServer, ldapPort) => {
 
   if (useSSL) {
     const certPath = path.join(process.cwd(), ldapCertPath);
+
+  // LOGGING
+    // console.log("=== LDAP Certificate Logging ===");
+    // console.log("process.cwd():", process.cwd());
+    // console.log("ldapCertPath (from params):", ldapCertPath);
+    // console.log("Resolved certificate path:", certPath);
+    // console.log("File exists?:", fs.existsSync(certPath));
+    // console.log("================================");
+
     clientOptions.tlsOptions = {
       ca: [fs.readFileSync(certPath)],
     };
@@ -155,7 +164,7 @@ async function authenticateUser(username, password) {
       });
     });
 
-    console.log("Found user DN:", userDN);
+    // console.log("Found user DN:", userDN);
 
     const userDnString = userDN.toString();
 
@@ -210,7 +219,7 @@ async function getAccessFolders(username) {
     paramMap[param.name] = param.value;
   });
 
-  console.log("LDAP Params:", paramMap);
+  // console.log("LDAP Params:", paramMap);
 
   const paramUseSSL = paramMap["ldap-use-ssl"] === "true";
   const paramLdapCertPath = paramMap["ldap-cert-path"];
@@ -239,10 +248,10 @@ async function getAccessFolders(username) {
 
   const accessFolders = [];
 
-  console.log("LDAP Base DN:", paramLdapBaseDN);
-  console.log("LDAP Scope:", paramScope);
-  console.log("LDAP Filter:", paramFilter);
-  console.log("LDAP Attribute:", paramAttribute);
+  // console.log("LDAP Base DN:", paramLdapBaseDN);
+  // console.log("LDAP Scope:", paramScope);
+  // console.log("LDAP Filter:", paramFilter);
+  // console.log("LDAP Attribute:", paramAttribute);
 
   const clientOptions = getClientOptions(
     paramUseSSL,
@@ -278,7 +287,7 @@ async function getAccessFolders(username) {
       attributes: attributes,
     };
 
-    console.log("LDAP search options:", searchOptions);
+    // console.log("LDAP search options:", searchOptions);
 
     await new Promise((resolve, reject) => {
       client.search(paramLdapBaseDN, searchOptions, (err, res) => {
@@ -288,7 +297,7 @@ async function getAccessFolders(username) {
         }
 
         res.on("searchEntry", (entry) => {
-          console.log("LDAP searchEntry received:", entry.objectName);
+          // console.log("LDAP searchEntry received:", entry.objectName);
 
           if (entry.attributes) {
             const cnAttr = entry.attributes.find((attr) => attr.type === "cn");
@@ -296,8 +305,8 @@ async function getAccessFolders(username) {
               (attr) => attr.type === paramAttribute
             );
 
-            console.log("Entry CN:", cnAttr?.values);
-            console.log("Entry member values:", memberAttr?.values);
+            // console.log("Entry CN:", cnAttr?.values);
+            // console.log("Entry member values:", memberAttr?.values);
 
             const isUserMember = memberAttr?.values?.some((dn) => {
               // Extract uid from DN string like "uid=user,ou=users,dc=example,dc=org"
@@ -307,7 +316,7 @@ async function getAccessFolders(username) {
             });
 
             if (isUserMember && cnAttr?.values) {
-              console.log(`User ${username} is a member of`, cnAttr.values);
+              // console.log(`User ${username} is a member of`, cnAttr.values);
               accessFolders.push(...cnAttr.values);
             }
           }
@@ -325,7 +334,7 @@ async function getAccessFolders(username) {
       });
     });
 
-    console.log("Access folders found:", accessFolders);
+    // console.log("Access folders found:", accessFolders);
     return accessFolders;
   } catch (err) {
     console.error("Error in getAccessFolders:", err.message || err);
@@ -361,7 +370,7 @@ const resolvers = {
         const folders = await getAccessFolders(context.user.username);
         // console.log('Access folders:', folders);
 
-        console.log("folders.length > 0: ", folders?.length > 0);
+        // console.log("folders.length > 0: ", folders?.length > 0);
         if (folders && folders.length > 0) {
           const paramNamePathToRootDir = "path-to-root-directory";
           const directoryParam = await AdminParams.findOne({
@@ -379,7 +388,7 @@ const resolvers = {
           // console.log(directoryParam);
           if (directoryParam) {
             // console.log("directoryfromDB.value: ", directoryParam.value);
-            console.log("Path to directoryTree:", directoryParam.value);
+            // console.log("Path to directoryTree:", directoryParam.value);
             const resolvedPath = path.resolve(directoryParam.value);
 
             try {
@@ -416,7 +425,7 @@ const resolvers = {
         // console.log(directoryParam);
         if (directoryParam) {
           // console.log("directoryfromDB.value: ", directoryParam.value);
-          console.log("Path to directoryTree:", directoryParam.value);
+          // console.log("Path to directoryTree:", directoryParam.value);
           const resolvedPath = path.resolve(directoryParam.value);
           try {
             const directories = directoryTree(resolvedPath);
@@ -442,7 +451,8 @@ const resolvers = {
         // Proceed with root folder loading logic
       }
 
-      console.log("directory in getFiles resolver : ", directory);
+      // console.log("directory in getFiles resolver : ", directory);
+
       // In this case, we'll pretend there is no data when
       // we're not logged in. Another option would be to
       // throw an error.
@@ -480,7 +490,7 @@ const resolvers = {
               console.warn("Directory path invalid or unreadable");
               return null;
             } else {
-              console.log("files: ", files);
+              // console.log("files: ", files);
               return files;
             }
           } catch (err) {
@@ -529,7 +539,7 @@ const resolvers = {
                 console.warn("Directory path invalid or unreadable");
                 return null;
               } else {
-                console.log("files: ", files);
+                // console.log("files: ", files);
                 return files;
               }
             } catch (err) {
@@ -585,9 +595,9 @@ const resolvers = {
         throw new Error("Not authenticated");
       }
       try {
-        console.log("context.user.id: ", context.user.id);
+        // console.log("context.user.id: ", context.user.id);
         const params = await ProfileParams.findOne({ userId: context.user.id });
-        console.log("params: ", params);
+        // console.log("params: ", params);
         return params;
       } catch (error) {
         console.error("Error in getProfileParams resolver:", error);
@@ -597,10 +607,10 @@ const resolvers = {
 
     getNotifications: async () => {
       try {
-        console.log("Received request for getNotifications");
+        // console.log("Received request for getNotifications");
         const notifications = await Notification.find();
         const sortedNotifications = sortByDirectories(notifications);
-        console.log("Sending notifications:", sortedNotifications);
+        // console.log("Sending notifications:", sortedNotifications);
         return sortedNotifications;
       } catch (error) {
         throw new Error("Error fetching notifications");
@@ -618,8 +628,7 @@ const resolvers = {
           directory,
         });
         if (value) {
-          console.log("value: ", value);
-
+          // console.log("value: ", value);
           return value;
         } else {
           return null;
@@ -649,11 +658,11 @@ const resolvers = {
                 authType: "ldap",
                 lastLogin: new Date(),
               });
-              console.log(`Created new local user: ${username}`);
+              // console.log(`Created new local user: ${username}`);
             } else {
               localUser.lastLogin = new Date();
               await localUser.save();
-              console.log(`Updated last login for user: ${username}`);
+              // console.log(`Updated last login for user: ${username}`);
             }
 
             const token = JWT.sign({ username, id: localUser.id }, JWT_SECRET, {
@@ -667,7 +676,7 @@ const resolvers = {
           }
         } else {
           const user = await User.findOne({ username }).select("+password");
-          console.log("user in login resolver: ", user);
+          // console.log("user in login resolver: ", user);
           if (!user) {
             throw new AuthenticationError("Incorrect credentials");
           }
@@ -783,12 +792,12 @@ const resolvers = {
       context
     ) => {
       const existingDirectory = await Notification.findOne({ directory });
-      console.log("existingDirectory: ", existingDirectory);
+      // console.log("existingDirectory: ", existingDirectory);
 
       if (!existingDirectory) {
         await Notification.create({ customer, directory, value });
       } else {
-        console.log("Found duplicate directory. Change the existing directory");
+        // console.log("Found duplicate directory. Change the existing directory");
         const message =
           "Duplicate folder has been found. Please change a notification for the existing folder";
         throw new Error(message, {
@@ -805,7 +814,7 @@ const resolvers = {
       context
     ) => {
       const existingNotification = await Notification.findOne({ _id: id });
-      console.log("existingNotification: ", existingNotification);
+      // console.log("existingNotification: ", existingNotification);
 
       if (existingNotification) {
         await Notification.updateOne(
@@ -813,7 +822,7 @@ const resolvers = {
           { $set: { customer, directory, value } }
         );
       } else {
-        console.log("Notification has not been found");
+        // console.log("Notification has not been found");
         const message = "Notification has not been found. It was not updated";
         throw new Error(message, {
           extensions: { code: "NO_ENTITY_FOUND" },
@@ -824,7 +833,7 @@ const resolvers = {
     },
 
     deleteNotification: async (parent, { id }, context) => {
-      console.log("id: ", id);
+      // console.log("id: ", id);
       const result = await Notification.deleteOne({ _id: id });
 
       if (result.deletedCount === 1) {

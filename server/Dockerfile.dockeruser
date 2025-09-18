@@ -1,0 +1,31 @@
+# -------------------------
+# Base image
+# -------------------------
+FROM node:18
+
+# Create non-root user
+RUN useradd -ms /bin/bash dockeruser
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (for caching)
+COPY package*.json ./
+
+# Install dependencies as root (avoids permission issues)
+RUN npm install
+
+# Copy the rest of the application
+COPY . .
+
+# Make /app owned by dockeruser if the app needs to write files (logs, uploads, etc.)
+RUN chown -R dockeruser:dockeruser /app
+
+# Switch to non-root user
+USER dockeruser
+
+# Expose server port
+EXPOSE 3001
+
+# Run the server
+CMD ["node", "index.js"]

@@ -88,7 +88,7 @@ export default function Dashboard() {
   const { refetch: refetchNotifications } = useQuery(GET_NOTIFICATIONS, {
     onCompleted: (completedData) => {
       const notifications = completedData?.getNotifications ?? [];
-      console.log("Notifications fetched from server:", notifications);
+      // console.log("Notifications fetched from server:", notifications);
 
       setNotifications(notifications);
     },
@@ -105,7 +105,7 @@ export default function Dashboard() {
     async function fetchDatahNotifications() {
       try {
         const result = await refetchNotifications();
-        console.log("Refetched notifications:", result?.data?.getNotifications);
+        // console.log("Refetched notifications:", result?.data?.getNotifications);
 
         if (result?.data) setNotifications(result.data.getNotifications);
       } catch (error) {
@@ -287,7 +287,7 @@ export default function Dashboard() {
   };
 
   const renderGrid = (nodes) => {
-    console.log("Notifications passed to renderGrid:", nodes);
+    // console.log("Notifications passed to renderGrid:", nodes);
 
     return (
       <Box
